@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.datadynamics.atlas</groupId>
+        <artifactId>atlas-client-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>atlas-client-it</artifactId>
+    <name>Atlas Client :: Integration Tests</name>
+    <description>
+        Integration tests against a real Atlas. Run with: mvn verify -Pit
+        (starts Atlas in Docker), or mvn verify -Pit -Datlas.url=http://host:21000 for an existing server.
+    </description>
+
+    <properties>
+        <maven.deploy.skip>true</maven.deploy.skip>
+        <maven.install.skip>true</maven.install.skip>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.datadynamics.atlas</groupId>
+            <artifactId>atlas-client-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.datadynamics.atlas</groupId>
+            <artifactId>atlas-client-typedef</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.datadynamics.atlas</groupId>
+            <artifactId>atlas-client-lineage</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.datadynamics.atlas</groupId>
+            <artifactId>atlas-client-kafka</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.datadynamics.atlas</groupId>
+            <artifactId>atlas-client-cli</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.datadynamics.atlas</groupId>
+            <artifactId>atlas-client-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <profiles>
+        <profile>
+            <id>it</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                    <goal>verify</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>

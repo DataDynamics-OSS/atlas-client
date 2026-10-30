@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.datadynamics.atlas</groupId>
+        <artifactId>atlas-client-parent</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>atlas-client-kafka</artifactId>
+    <name>Atlas Client :: Kafka</name>
+    <description>Asynchronous ingestion through the ATLAS_HOOK topic and ATLAS_ENTITIES change listener</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.datadynamics.atlas</groupId>
+            <artifactId>atlas-client-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
+        </dependency>
+    </dependencies>
+</project>
