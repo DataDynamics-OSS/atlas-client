@@ -233,6 +233,8 @@ atlas events tail --bootstrap-servers kafka:9092 --type hive_table --qualified-n
 라이브러리의 기능을 브라우저에서 직접 실행해 보는 웹 앱입니다. 각 화면은 라이브러리 메서드를 호출하고, 결과와 함께 클라이언트가 Atlas에 실제로 보낸 HTTP 요청을 보여줍니다.
 화면마다 처음 쓰는 사람을 위한 도움말이 함께 나옵니다. Docker만 있으면 Atlas, Kafka와 함께 띄울 수 있습니다.
 
+![데모 앱의 리니지 화면](atlas-client-demo/docs/atlas-client-demo.png)
+
 ```bash
 docker compose -f docker/compose.yaml up -d --build --wait   # 첫 기동은 Atlas 초기화로 몇 분 걸림
 # http://localhost:8090 → "샘플 데이터"에서 만들기
