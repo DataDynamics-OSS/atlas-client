@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head th:replace="~{fragments :: head('리니지')}"></head>
+<body>
+<header th:replace="~{fragments :: nav('lineage')}"></header>
+<div class="layout">
+<main>
+    <h1>리니지</h1>
+    <p class="lead"><code>AtlasLineage.graph()</code>로 그래프를 만들고 <code>toMermaid()</code>로 그립니다.
+        <a th:href="@{/lineage/register}">리니지 등록</a></p>
+    <div th:replace="~{fragments :: alerts}"></div>
+    <form class="panel" method="get" th:action="@{/lineage}" th:object="${form}">
+        <div class="form-row">
+            <label>typeName<input type="text" name="typeName" th:value="*{typeName}" placeholder="console_demo_table"></label>
+            <label style="flex: 1">qualifiedName<input type="text" name="qualifiedName" th:value="*{qualifiedName}" placeholder="mart.daily_sales@demo"></label>
+            <label>또는 guid<input type="text" name="guid" th:value="*{guid}"></label>
+        </div>
+        <div class="form-row">
+            <label>방향
+                <select name="direction"><option th:each="d : ${directions}" th:value="${d}" th:text="${d}" th:selected="${d == form.direction}"></option></select>
+            </label>
+            <label>depth<input type="number" name="depth" th:value="*{depth}" min="1" max="20"></label>
+            <label class="check"><input type="checkbox" name="includeDeleted" value="true" th:checked="*{includeDeleted}"> 삭제된 relationship 포함 (과거 이력)</label>
+            <button>조회</button>
+        </div>
+    </form>
+
+    <th:block th:if="${graph}">
+        <section class="panel">
+            <h2>그래프
+                <span class="muted small" th:text="'데이터셋 ' + ${#lists.size(graph.datasets())} + ', process ' + ${#lists.size(graph.processes())} + ', edge ' + ${#lists.size(graph.edges())}"></span>
+            </h2>
+            <pre class="mermaid" th:text="${mermaid}"></pre>
+            <details style="margin-top: 8px"><summary>Mermaid / DOT 원문</summary>
+                <h4>Mermaid</h4><pre class="code" data-lang="text" th:text="${mermaid}"></pre>
+                <h4>Graphviz DOT</h4><pre class="code" data-lang="text" th:text="${dot}"></pre></details>
+        </section>
+        <div class="grid">
+            <section class="panel">
+                <h2>영향도 <span class="muted small">impactOf(base): 이 엔티티가 바뀌면 영향받는 데이터셋</span></h2>
+                <p class="muted" th:if="${#lists.isEmpty(impacts)}">없음</p>
+                <table th:unless="${#lists.isEmpty(impacts)}">
+                    <thead><tr><th>거리</th><th>데이터셋</th><th>경로</th></tr></thead>
+                    <tbody><tr th:each="i : ${impacts}">
+                        <td th:text="${i.distance()}"></td>
+                        <td><a th:href="@{/entities/{g}(g=${i.dataset().guid()})}" th:text="${i.dataset().label()}"></a></td>
+                        <td class="small"><span th:each="n, s : ${i.path()}"><span th:text="${n.label()}"></span><span th:unless="${s.last}"> → </span></span></td>
+                    </tr></tbody>
+                </table>
+            </section>
+            <section class="panel">
+                <h2>원천 <span class="muted small">sourcesOf(base)</span></h2>
+                <p class="muted" th:if="${#lists.isEmpty(sources)}">없음</p>
+                <table th:unless="${#lists.isEmpty(sources)}">
+                    <thead><tr><th>거리</th><th>데이터셋</th></tr></thead>
+                    <tbody><tr th:each="i : ${sources}">
+                        <td th:text="${i.distance()}"></td>
+                        <td><a th:href="@{/entities/{g}(g=${i.dataset().guid()})}" th:text="${i.dataset().label()}"></a></td>
+                    </tr></tbody>
+                </table>
+            </section>
+        </div>
+        <section class="panel">
+            <h2>노드</h2>
+            <table>
+                <thead><tr><th>이름</th><th>타입</th><th>종류</th><th>상태</th><th></th></tr></thead>
+                <tbody><tr th:each="n : ${graph.nodes()}">
+                    <td><a th:href="@{/entities/{g}(g=${n.guid()})}" th:text="${n.label()}"></a></td>
+                    <td th:text="${n.typeName()}"></td>
+                    <td th:text="${n.process()} ? 'process' : 'dataset'"></td>
+                    <td th:text="${n.status()}"></td>
+                    <td><a th:href="@{/lineage(guid=${n.guid()},direction=${form.direction},depth=${form.depth})}">기준으로</a></td>
+                </tr></tbody>
+            </table>
+        </section>
+        <script th:src="@{/webjars/mermaid/dist/mermaid.min.js}"></script>
+        <script>mermaid.initialize({startOnLoad: true, securityLevel: 'strict'});</script>
+    </th:block>
+    <section th:replace="~{fragments :: trace}"></section>
+</main>
+<aside class="help" th:replace="~{help/lineage-graph :: help}"></aside>
+</div>
+</body>
+</html>

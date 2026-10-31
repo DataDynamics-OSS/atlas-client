@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<body>
+<aside class="help" th:fragment="help">
+    <div th:replace="~{fragments :: helpTitle('오류', '요청을 처리하다 실패했을 때 나오는 화면입니다.')}"></div>
+
+    <h3>빨간 상자 읽는 법</h3>
+    <ol>
+        <li><b>굵은 글씨</b>: 클라이언트가 던진 예외 이름. 무엇이 문제인지 가장 먼저 알려줍니다.</li>
+        <li><b>HTTP 상태</b>: Atlas가 돌려준 응답 코드(있을 때)</li>
+        <li><b>ATLAS-… 코드</b>: Atlas의 오류 코드. 검색하면 원인을 찾기 쉽습니다.</li>
+        <li><b>메시지</b>: Atlas나 클라이언트가 적은 설명</li>
+    </ol>
+
+    <h3>예외 종류</h3>
+    <table>
+        <tbody>
+        <tr><th>AtlasNotFoundException</th><td>404. 없는 guid, 타입, qualifiedName</td></tr>
+        <tr><th>AtlasBadRequestException</th><td>400. 입력 형식이 잘못됨</td></tr>
+        <tr><th>AtlasConflictException</th><td>409. 이미 있는 것을 다시 만들려 함</td></tr>
+        <tr><th>AtlasUnavailableException</th><td>503 등. Atlas가 시작 중이거나 대기 상태</td></tr>
+        <tr><th>AtlasConnectionException</th><td>Atlas에 연결하지 못함</td></tr>
+        <tr><th>IllegalArgumentException</th><td>Atlas에 보내기 전에 데모 앱이나 클라이언트가 입력을 거부함</td></tr>
+        </tbody>
+    </table>
+    <p>모든 클라이언트 예외는 <code>AtlasClientException</code>을 상속하므로 Java 코드에서 한 번에 잡을 수도 있습니다.</p>
+
+    <h3>다음에 할 일</h3>
+    <ul>
+        <li>"뒤로"를 눌러 입력을 고친 뒤 다시 시도합니다.</li>
+        <li>아래 요청 기록에서 실패한 요청(빨간 행)을 눌러 Atlas가 돌려준 응답 본문을 확인합니다.</li>
+        <li>Atlas 접속 문제라면 <a th:href="@{/}">대시보드</a>에서 상태를 확인합니다.</li>
+    </ul>
+</aside>
+</body>
+</html>

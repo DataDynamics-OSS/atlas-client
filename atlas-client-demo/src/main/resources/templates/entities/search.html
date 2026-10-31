@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head th:replace="~{fragments :: head('엔티티 검색')}"></head>
+<body>
+<header th:replace="~{fragments :: nav('entities')}"></header>
+<div class="layout">
+<main>
+    <h1>엔티티 검색</h1>
+    <p class="lead"><code>search().basic()</code>, <code>dsl()</code>, <code>fullText()</code> ·
+        <a th:href="@{/entities/import}">CSV/YAML import</a></p>
+    <div th:replace="~{fragments :: alerts}"></div>
+    <form class="panel" method="get" th:action="@{/entities}" th:object="${form}">
+        <input type="hidden" name="search" value="1">
+        <div class="form-row">
+            <label>방식
+                <select name="mode">
+                    <option value="basic" th:selected="*{mode == 'basic'}">basic</option>
+                    <option value="dsl" th:selected="*{mode == 'dsl'}">DSL</option>
+                    <option value="fulltext" th:selected="*{mode == 'fulltext'}">full-text</option>
+                </select>
+            </label>
+            <label>typeName (basic)<input type="text" name="typeName" th:value="*{typeName}" placeholder="DataSet"></label>
+            <label>classification (basic)<input type="text" name="classification" th:value="*{classification}"></label>
+            <label style="flex: 1">query (basic: 전문 검색어, DSL: 쿼리)<input type="text" name="query" th:value="*{query}"
+                   placeholder="console_demo_table where tier = 'GOLD'"></label>
+        </div>
+        <div class="form-row">
+            <label>속성 필터 (basic)<input type="text" name="filterAttribute" th:value="*{filterAttribute}" placeholder="owner"></label>
+            <label>연산자
+                <select name="filterOperator">
+                    <option th:each="o : ${operators}" th:value="${o}" th:text="${o}" th:selected="${o.name() == form.filterOperator}"></option>
+                </select>
+            </label>
+            <label>값<input type="text" name="filterValue" th:value="*{filterValue}"></label>
+            <label>limit<input type="number" name="limit" th:value="*{limit}" min="1" max="1000"></label>
+            <label>offset<input type="number" name="offset" th:value="*{offset}" min="0"></label>
+            <label class="check"><input type="checkbox" name="includeDeleted" value="true" th:checked="*{includeDeleted}"> 삭제된 엔티티 포함</label>
+            <button>검색</button>
+        </div>
+    </form>
+
+    <section class="panel" th:if="${result}">
+        <h2>결과
+            <span class="muted small" th:text="${#lists.size(entities)} + '건'"></span>
+            <span class="muted small" th:if="${result.approximateCount}" th:text="'(전체 약 ' + ${result.approximateCount} + ')'"></span>
+        </h2>
+        <table th:unless="${#lists.isEmpty(entities)}">
+            <thead><tr><th>표시 이름</th><th>타입</th><th>qualifiedName</th><th>상태</th><th>classification</th><th>label</th></tr></thead>
+            <tbody>
+            <tr th:each="e : ${entities}">
+                <td><a th:href="@{/entities/{g}(g=${e.guid})}" th:text="${e.displayText} ?: ${e.guid}"></a></td>
+                <td th:text="${e.typeName}"></td>
+                <td th:text="${e.qualifiedName()}"></td>
+                <td><span class="badge" th:classappend="${e.status != null and e.status.name() == 'DELETED'} ? 'err'" th:text="${e.status}"></span></td>
+                <td><span class="badge" th:each="c : ${e.classificationNames}" th:text="${c}" style="margin-right: 4px"></span></td>
+                <td><span class="badge" th:each="l : ${e.labels}" th:text="${l}" style="margin-right: 4px"></span></td>
+            </tr>
+            </tbody>
+        </table>
+        <div th:if="${attributeResult}">
+            <h3>select 결과</h3>
+            <table>
+                <thead><tr><th th:each="n : ${attributeResult.name}" th:text="${n}"></th></tr></thead>
+                <tbody><tr th:each="row : ${attributeResult.values}"><td th:each="v : ${row}" th:text="${v}"></td></tr></tbody>
+            </table>
+        </div>
+        <p style="margin-top: 12px">
+            <a th:if="${form.offset > 0}" th:href="@{'/entities?' + ${form.pageQuery(form.offset - form.limit)}}">← 이전</a>
+            <a th:if="${#lists.size(entities) >= form.limit}" th:href="@{'/entities?' + ${form.pageQuery(form.offset + form.limit)}}">다음 →</a>
+        </p>
+    </section>
+    <section th:replace="~{fragments :: trace}"></section>
+</main>
+<aside class="help" th:replace="~{help/entities-search :: help}"></aside>
+</div>
+</body>
+</html>

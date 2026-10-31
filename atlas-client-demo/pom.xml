@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.datadynamics.atlas</groupId>
+        <artifactId>atlas-client-parent</artifactId>
+        <version>0.2.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>atlas-client-demo</artifactId>
+    <name>Atlas Client :: Demo</name>
+    <description>Spring Boot web demo that exercises the client against a running Atlas</description>
+
+    <properties>
+        <spring-boot.version>4.0.9</spring-boot.version>
+        <!-- Spring Boot's Jackson 3 shares jackson-annotations with Jackson 2 and needs 2.21: use the
+             Jackson 2 version Spring Boot manages instead of the parent's. -->
+        <jackson.version>2.21.7</jackson.version>
+        <mermaid.version>11.17.2</mermaid.version>
+        <monaco-editor.version>0.55.1</monaco-editor.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring-boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.datadynamics.atlas</groupId>
+            <artifactId>atlas-client-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.datadynamics.atlas</groupId>
+            <artifactId>atlas-client-typedef</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.datadynamics.atlas</groupId>
+            <artifactId>atlas-client-lineage</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.datadynamics.atlas</groupId>
+            <artifactId>atlas-client-kafka</artifactId>
+        </dependency>
+        <!-- ConsistencyChecker and EntityFiles -->
+        <dependency>
+            <groupId>io.datadynamics.atlas</groupId>
+            <artifactId>atlas-client-cli</artifactId>
+            <version>${project.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-simple</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>info.picocli</groupId>
+                    <artifactId>picocli</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-thymeleaf</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <!-- Version-less /webjars/ paths -->
+        <dependency>
+            <groupId>org.webjars</groupId>
+            <artifactId>webjars-locator-lite</artifactId>
+        </dependency>
+        <!-- Only the bundled dist is used; the npm dependencies of mermaid are not needed. -->
+        <dependency>
+            <groupId>org.webjars.npm</groupId>
+            <artifactId>mermaid</artifactId>
+            <version>${mermaid.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <!-- Code viewer and editor (min/vs AMD build); its npm dependencies are bundled. -->
+        <dependency>
+            <groupId>org.webjars.npm</groupId>
+            <artifactId>monaco-editor</artifactId>
+            <version>${monaco-editor.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.datadynamics.atlas</groupId>
+            <artifactId>atlas-client-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <finalName>atlas-client-demo</finalName>
+        <plugins>
+            <plugin>
+                <!-- Spring binds request parameters by method parameter name. -->
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <parameters>true</parameters>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <version>${spring-boot.version}</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

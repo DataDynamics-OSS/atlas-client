@@ -1,0 +1,80 @@
+# Atlas + Kafka + Atlas Client Demo.
+#
+#   docker compose -f docker/compose.yaml up -d --build
+#
+# Atlas takes several minutes to become ACTIVE on first start; the demo shows its status meanwhile.
+# Host ports can be changed with ATLAS_PORT, KAFKA_PORT and DEMO_PORT. To reach the stack from other
+# machines, set BIND_ADDRESS (host interface the ports listen on) and ADVERTISED_HOST (address Kafka
+# gives to clients outside Docker), e.g. in docker/.env.
+name: atlas-client
+
+services:
+  kafka:
+    image: apache/kafka:3.9.1
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      # INTERNAL for Atlas and the demo, EXTERNAL for clients on the host (CLI, IDE).
+      KAFKA_LISTENERS: INTERNAL://:19092,EXTERNAL://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:19092,EXTERNAL://${ADVERTISED_HOST:-localhost}:${KAFKA_PORT:-9092}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    ports:
+      - "${BIND_ADDRESS:-0.0.0.0}:${KAFKA_PORT:-9092}:9092"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:19092 > /dev/null"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+
+  atlas:
+    image: sburn/apache-atlas:2.3.0
+    depends_on:
+      kafka:
+        condition: service_healthy
+    # The embedded Kafka of this image is only reachable inside the container: use the kafka service.
+    command:
+      - bash
+      - -c
+      - >-
+        sed -i
+        -e 's|^atlas.notification.embedded=.*|atlas.notification.embedded=false|'
+        -e 's|^atlas.kafka.bootstrap.servers=.*|atlas.kafka.bootstrap.servers=kafka:19092|'
+        /apache-atlas/conf/atlas-application.properties
+        && /apache-atlas/bin/atlas_start.py; tail -fF /apache-atlas/logs/application.log
+    ports:
+      - "${BIND_ADDRESS:-0.0.0.0}:${ATLAS_PORT:-21000}:21000"
+    volumes:
+      - atlas-data:/apache-atlas/data
+    healthcheck:
+      # status answers before the models are loaded; ACTIVE means requests are accepted.
+      test: ["CMD-SHELL", "wget -qO- --user=admin --password=admin http://localhost:21000/api/atlas/admin/status | grep -q ACTIVE"]
+      interval: 15s
+      timeout: 10s
+      start_period: 10m
+      retries: 4
+
+  demo:
+    build:
+      context: ..
+      dockerfile: docker/demo.Dockerfile
+    image: atlas-client-demo:dev
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      ATLAS_URLS: http://atlas:21000
+      ATLAS_USERNAME: admin
+      ATLAS_PASSWORD: admin
+      ATLAS_KAFKA_BOOTSTRAP_SERVERS: kafka:19092
+    ports:
+      - "${BIND_ADDRESS:-0.0.0.0}:${DEMO_PORT:-8090}:8090"
+
+volumes:
+  atlas-data:

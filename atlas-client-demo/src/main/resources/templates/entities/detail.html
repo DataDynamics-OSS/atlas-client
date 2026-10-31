@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head th:replace="~{fragments :: head(${entity.getAttribute('name')} ?: ${entity.guid})}"></head>
+<body>
+<header th:replace="~{fragments :: nav('entities')}"></header>
+<div class="layout">
+<main>
+    <h1 th:text="${entity.getAttribute('name')} ?: ${entity.guid}"></h1>
+    <p class="lead">
+        <a th:href="@{/types/{t}(t=${entity.typeName})}" th:text="${entity.typeName}"></a> ·
+        <code th:text="${entity.getAttribute('qualifiedName')}"></code> ·
+        <span class="badge" th:classappend="${deleted} ? 'err' : 'ok'" th:text="${entity.status}"></span>
+        <a th:href="@{/lineage(guid=${entity.guid})}">리니지 보기</a>
+    </p>
+    <div th:replace="~{fragments :: alerts}"></div>
+
+    <div class="grid">
+        <section class="panel">
+            <h2>정보</h2>
+            <dl class="kv">
+                <dt>guid</dt><dd th:text="${entity.guid}"></dd>
+                <dt>version</dt><dd th:text="${entity.version}"></dd>
+                <dt>생성</dt><dd th:text="${entity.createdBy} + ' · ' + ${entity.createTime}"></dd>
+                <dt>수정</dt><dd th:text="${entity.updatedBy} + ' · ' + ${entity.updateTime}"></dd>
+            </dl>
+        </section>
+        <section class="panel">
+            <h2>삭제</h2>
+            <form method="post" th:action="@{/entities/{g}/delete(g=${entity.guid})}" th:unless="${deleted}"
+                  data-confirm="soft delete 할까요?">
+                <button class="danger">delete</button> <span class="muted small"><code>entities().delete(guid)</code></span>
+            </form>
+            <form method="post" th:action="@{/entities/{g}/purge(g=${entity.guid})}" th:if="${deleted}"
+                  data-confirm="purge하면 되돌릴 수 없습니다. 계속할까요?">
+                <button class="danger">purge</button> <span class="muted small"><code>admin().purge(guids)</code></span>
+            </form>
+        </section>
+    </div>
+
+    <section class="panel">
+        <h2>속성</h2>
+        <table>
+            <tbody>
+            <tr th:each="a : ${entity.attributes}">
+                <th th:text="${a.key}"></th>
+                <td class="pre-wrap" th:text="${a.value}"></td>
+            </tr>
+            </tbody>
+        </table>
+        <form class="form-row" method="post" th:action="@{/entities/{g}/attribute(g=${entity.guid})}" style="margin-top: 12px">
+            <label>속성 이름<input type="text" name="name" placeholder="description"></label>
+            <label style="flex: 1">값 (JSON으로 해석, 실패하면 문자열)<input type="text" name="value"></label>
+            <button>updateAttribute</button>
+        </form>
+    </section>
+
+    <section class="panel" th:if="${entity.relationshipAttributes != null and !#maps.isEmpty(entity.relationshipAttributes)}">
+        <h2>관계 속성</h2>
+        <table>
+            <tbody>
+            <tr th:each="a : ${entity.relationshipAttributes}">
+                <th th:text="${a.key}"></th>
+                <td>
+                    <th:block th:if="${a.value instanceof T(java.util.Map)}">
+                        <a th:if="${a.value['guid']}" th:href="@{/entities/{g}(g=${a.value['guid']})}"
+                           th:text="${a.value['displayText']} ?: ${a.value['guid']}"></a>
+                        <span class="muted small" th:text="${a.value['typeName']} + ' ' + (${a.value['relationshipStatus']} ?: '')"></span>
+                    </th:block>
+                    <th:block th:if="${a.value instanceof T(java.util.List)}">
+                        <div th:each="r : ${a.value}">
+                            <th:block th:if="${r instanceof T(java.util.Map)}">
+                                <a th:href="@{/entities/{g}(g=${r['guid']})}" th:text="${r['displayText']} ?: ${r['guid']}"></a>
+                                <span class="muted small" th:text="${r['typeName']} + ' ' + (${r['relationshipStatus']} ?: '')"></span>
+                            </th:block>
+                        </div>
+                    </th:block>
+                    <span th:unless="${a.value instanceof T(java.util.Map) or a.value instanceof T(java.util.List)}" th:text="${a.value}"></span>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <div class="grid">
+        <section class="panel">
+            <h2>Classification</h2>
+            <div th:each="c : ${entity.classifications}" class="form-row">
+                <span class="badge" th:text="${c.typeName}"></span>
+                <span class="muted small" th:if="${c.entityGuid != null and c.entityGuid != entity.guid}">전파됨</span>
+                <form class="inline" method="post" th:if="${c.entityGuid == null or c.entityGuid == entity.guid}"
+                      th:action="@{/entities/{g}/classifications/{n}/delete(g=${entity.guid},n=${c.typeName})}">
+                    <button class="secondary">제거</button>
+                </form>
+            </div>
+            <form class="form-row" method="post" th:action="@{/entities/{g}/classifications(g=${entity.guid})}">
+                <label>추가
+                    <select name="name"><option th:each="t : ${classificationTypes}" th:value="${t}" th:text="${t}"></option></select>
+                </label>
+                <label class="check"><input type="checkbox" name="propagate" value="true"> 리니지로 전파</label>
+                <button>addClassification</button>
+            </form>
+        </section>
+        <section class="panel">
+            <h2>Label</h2>
+            <p><span class="badge" th:each="l : ${entity.labels}" th:text="${l}" style="margin-right: 4px"></span></p>
+            <form class="form-row" method="post" th:action="@{/entities/{g}/labels(g=${entity.guid})}">
+                <label>label (쉼표 구분)<input type="text" name="labels"></label>
+                <button name="op" value="add">추가</button>
+                <button name="op" value="remove" class="secondary">제거</button>
+                <button name="op" value="set" class="secondary">교체</button>
+            </form>
+        </section>
+    </div>
+
+    <section class="panel">
+        <h2>Business metadata</h2>
+        <pre class="code" data-lang="json" th:if="${businessJson}" th:text="${businessJson}"></pre>
+        <p class="muted small" th:if="${#lists.isEmpty(businessMetadataTypes)}">정의된 business metadata 타입이 없습니다.</p>
+        <form method="post" th:action="@{/entities/{g}/business-metadata(g=${entity.guid})}" th:unless="${#lists.isEmpty(businessMetadataTypes)}">
+            <label>JSON: <code>{"bm 이름": {"속성": 값}}</code> · 타입: <span th:text="${businessMetadataTypes}"></span>
+                <textarea name="json" rows="4" data-editor="json" th:text="'{&quot;' + ${businessMetadataTypes[0]} + '&quot;: {}}'"></textarea></label>
+            <div class="form-row" style="margin-top: 8px">
+                <label class="check"><input type="checkbox" name="overwrite" value="true"> overwrite</label>
+                <button>setBusinessMetadata</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="panel">
+        <h2>감사 이력 <span class="muted small">getAuditEvents (최근 25건)</span></h2>
+        <table th:if="${audits}">
+            <thead><tr><th>시간</th><th>사용자</th><th>동작</th><th>상세</th></tr></thead>
+            <tbody>
+            <tr th:each="a : ${audits}">
+                <td th:text="${a.timestamp}"></td>
+                <td th:text="${a.user}"></td>
+                <td th:text="${a.action}"></td>
+                <td><details><summary class="small">보기</summary><pre class="code" data-lang="json" th:text="${a.details}"></pre></details></td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section class="panel">
+        <details><summary>서버 응답 JSON (<code>AtlasEntityWithExtInfo</code>)</summary><pre class="code" data-lang="json" data-max-height="720" th:text="${json}"></pre></details>
+    </section>
+    <section th:replace="~{fragments :: trace}"></section>
+</main>
+<aside class="help" th:replace="~{help/entities-detail :: help}"></aside>
+</div>
+</body>
+</html>

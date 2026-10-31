@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<body>
+<aside class="help" th:fragment="help">
+    <div th:replace="~{fragments :: helpTitle('엔티티 import', '여러 엔티티를 한 번에 등록하거나 수정합니다. CLI의 atlas entities import와 같은 형식입니다.')}"></div>
+
+    <h3>무엇을 하나요?</h3>
+    <p>YAML, JSON, CSV로 쓴 엔티티 목록을 읽어 Atlas에 보냅니다. 이미 있는 엔티티는 수정하고 없는 엔티티는 새로 만듭니다
+        (<span class="term">upsert</span>). 같은 엔티티인지는 <b>타입 + qualifiedName</b>으로 판단하므로, 같은 파일을 여러 번 올려도 중복이 생기지 않습니다.</p>
+    <p>그래서 모든 엔티티에 <code>qualifiedName</code>이 꼭 있어야 합니다. 없으면 보내기 전에 오류를 표시합니다.</p>
+
+    <h3>사용 순서</h3>
+    <ol>
+        <li><b>형식</b>을 고릅니다(yaml, json, csv). 편집기의 문법 강조가 형식에 맞게 바뀝니다.</li>
+        <li>편집기에 내용을 쓰거나 붙여 넣습니다. 또는 <b>파일</b>을 고릅니다. 파일을 고르면 편집기 내용 대신 파일을 쓰고, 형식은 파일 확장자(.csv, .json, .yaml)로 정합니다.</li>
+        <li>먼저 <b>dry run</b>을 눌러 제대로 읽히는지 확인합니다. Atlas에는 아무것도 보내지 않고, 읽은 결과를 JSON으로 보여줍니다.</li>
+        <li><b>import</b>를 누르면 등록합니다. 결과에 <code>+</code>(새로 만듦), <code>~</code>(수정됨) 목록이 나옵니다.</li>
+    </ol>
+
+    <h3>기본 타입</h3>
+    <p>각 엔티티에 <code>typeName</code>이 없을 때 쓸 타입입니다. CSV는 보통 한 파일에 한 타입이라 여기에 타입을 적고 typeName 열은 생략합니다.</p>
+
+    <h3>YAML 형식</h3>
+    <p>엔티티 목록을 씁니다. 각 엔티티는 <code>typeName</code>, <code>attributes</code>가 기본이고 <code>labels</code>, <code>classifications</code>도 넣을 수 있습니다.</p>
+    <pre class="code" data-lang="yaml">- typeName: console_demo_table
+  attributes:
+    qualifiedName: sales.refunds@demo
+    name: refunds
+    owner: kim
+    tier: SILVER
+    rowCount: 1200
+  labels: [finance]
+  classifications:
+    - typeName: console_demo_PII
+- typeName: DataSet
+  attributes:
+    qualifiedName: files.export@demo
+    name: export</pre>
+    <p>속성 이름은 그 타입에 정의된 이름이어야 합니다. 어떤 속성이 있는지는 <a th:href="@{/types}">타입</a> 메뉴의 정의에서 확인하세요.</p>
+
+    <h3>JSON 형식</h3>
+    <p>YAML과 같은 구조를 JSON으로 씁니다. REST API 응답처럼 <code>{"entities": [...]}</code>로 감싼 형태도 받습니다.</p>
+    <pre class="code" data-lang="json">[
+  {
+    "typeName": "DataSet",
+    "attributes": { "qualifiedName": "files.export@demo", "name": "export" }
+  }
+]</pre>
+
+    <h3>CSV 형식</h3>
+    <p>한 줄이 엔티티 하나, 한 열이 속성 하나입니다. 첫 줄은 헤더(속성 이름)입니다. 빈 칸은 보내지 않습니다.</p>
+    <pre class="code" data-lang="text">qualifiedName,name,owner,tier,rowCount,labels
+sales.refunds@demo,refunds,kim,SILVER,1200,finance|daily
+sales.coupons@demo,coupons,lee,BRONZE,300,</pre>
+    <h4>CSV 헤더 문법</h4>
+    <table>
+        <thead><tr><th>헤더</th><th>의미</th><th>셀 예</th></tr></thead>
+        <tbody>
+        <tr><td><code>name</code></td><td>문자열 속성</td><td><code>orders</code></td></tr>
+        <tr><td><code>tags[]</code></td><td>배열 속성 (값은 <code>|</code>로 구분)</td><td><code>a|b|c</code></td></tr>
+        <tr><td><code>db@hive_db</code></td><td>다른 엔티티 참조 (그 타입의 qualifiedName)</td><td><code>sales@prod</code></td></tr>
+        <tr><td><code>columns[]@hive_column</code></td><td>참조 배열</td><td><code>t.a@prod|t.b@prod</code></td></tr>
+        <tr><td><code>typeName</code></td><td>행마다 다른 타입</td><td><code>hive_table</code></td></tr>
+        <tr><td><code>classifications</code></td><td>classification 이름 (<code>|</code> 구분)</td><td><code>PII</code></td></tr>
+        <tr><td><code>labels</code></td><td>레이블 (<code>|</code> 구분)</td><td><code>finance|daily</code></td></tr>
+        </tbody>
+    </table>
+    <p>숫자나 true/false도 문자열로 적으면 Atlas가 속성 타입에 맞게 바꿉니다. 쉼표가 들어간 값은 큰따옴표로 감쌉니다: <code>"a, b"</code></p>
+
+    <h3>엔티티끼리 참조하기</h3>
+    <p>예를 들어 데이터베이스와 그 안의 테이블을 한 파일에 넣고, 테이블이 데이터베이스를 가리키게 할 수 있습니다.</p>
+    <pre class="code" data-lang="text">typeName,qualifiedName,name,db@hive_db
+hive_db,sales@prod,sales,
+hive_table,sales.orders@prod,orders,sales@prod</pre>
+    <p>Atlas는 같은 요청 안에서 막 만드는 엔티티를 qualifiedName으로 찾지 못합니다(<code>ATLAS-404-00-00A</code> 오류).
+        그래서 데모 앱은 100건씩 나눠 보내면서 <b>같은 묶음 안의 참조를 임시 guid로 연결</b>합니다
+        (<code>EntityFiles.linkWithinBatch</code>). 묶음이 다르면 참조되는 엔티티가 파일에서 먼저 나와야 합니다.</p>
+
+    <h3>Java 코드로는</h3>
+    <pre class="code" data-lang="java">List&lt;AtlasEntity&gt; entities = EntityFiles.parse("tables.csv", text, "hive_table");
+atlas.entities().createOrUpdate(EntityFiles.linkWithinBatch(entities));</pre>
+
+    <h3>자주 나는 오류</h3>
+    <ul>
+        <li><b>qualifiedName is missing</b>: qualifiedName 열이나 속성이 빠졌습니다.</li>
+        <li><b>no typeName</b>: typeName도 없고 기본 타입도 비었습니다.</li>
+        <li><b>HTTP 404 / ATLAS-404-00-007 등</b>: 없는 타입 이름이거나, 참조한 엔티티가 Atlas에 없습니다.</li>
+        <li><b>HTTP 400</b>: 그 타입에 없는 속성 이름이거나 값이 타입과 맞지 않습니다(예: enum에 없는 값).</li>
+    </ul>
+    <p>등록한 뒤에는 <a th:href="@{/entities}">엔티티 검색</a>에서 확인하세요. 검색 인덱스 반영에 몇 초 걸릴 수 있습니다.</p>
+</aside>
+</body>
+</html>

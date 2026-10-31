@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head th:replace="~{fragments :: head('Kafka')}"></head>
+<body>
+<header th:replace="~{fragments :: nav('kafka')}"></header>
+<div class="layout">
+<main>
+    <h1>Kafka</h1>
+    <p class="lead"><code>AtlasHookPublisher</code>로 <code>ATLAS_HOOK</code>에 메시지를 보내고,
+        <code>AtlasEntityChangeListener</code>로 <code>ATLAS_ENTITIES</code> 변경 이벤트를 받습니다.</p>
+    <div th:replace="~{fragments :: alerts}"></div>
+    <div class="alert ok" th:if="${published}">
+        Kafka가 받았습니다: <code th:text="${published}"></code>
+        <div class="small">Atlas는 비동기로 처리합니다. 반영되면 아래 이벤트 목록에 나타납니다.
+            Atlas가 처리에 실패하면 서버 로그에만 남고 이벤트가 오지 않습니다.</div>
+    </div>
+
+    <section class="panel">
+        <div class="tabs" data-tabs>
+            <button type="button" data-tab="create">createOrUpdate</button>
+            <button type="button" data-tab="partial">partialUpdateByQualifiedName</button>
+            <button type="button" data-tab="delete">deleteByQualifiedName</button>
+        </div>
+        <form id="create" class="tab-panel" method="post" th:action="@{/kafka/publish}">
+            <input type="hidden" name="op" value="create">
+            <label>엔티티 (YAML/JSON, import와 같은 형식)<textarea name="entities" rows="8" data-editor="yaml" th:text="${entities}"></textarea></label>
+            <p><button>ENTITY_CREATE_V2 전송</button></p>
+        </form>
+        <form id="partial" class="tab-panel" method="post" th:action="@{/kafka/publish}">
+            <input type="hidden" name="op" value="partial">
+            <div class="form-row">
+                <label>typeName<input type="text" name="typeName" th:value="${typeName}"></label>
+                <label style="flex: 1">qualifiedName<input type="text" name="qualifiedName" th:value="${qualifiedName}"></label>
+            </div>
+            <label>바꿀 속성 (JSON)<textarea name="attributes" rows="4" data-editor="json" th:text="${attributes}"></textarea></label>
+            <p><button>ENTITY_PARTIAL_UPDATE_V2 전송</button></p>
+        </form>
+        <form id="delete" class="tab-panel" method="post" th:action="@{/kafka/publish}">
+            <input type="hidden" name="op" value="delete">
+            <div class="form-row">
+                <label>typeName<input type="text" name="typeName" th:value="${typeName}"></label>
+                <label style="flex: 1">qualifiedName<input type="text" name="qualifiedName" th:value="${qualifiedName}"></label>
+                <button class="danger">ENTITY_DELETE_V2 전송</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="panel">
+        <h2>ATLAS_ENTITIES 이벤트
+            <span class="badge" id="stream-state">연결 중</span>
+            <span class="muted small" th:if="${hub}" th:text="'데모 앱 시작(' + ${hub.startedAt()} + ') 이후 최근 200건'"></span>
+        </h2>
+        <div class="alert error" th:if="${hub != null and hub.failure() != null}" th:text="${hub.failure()}"></div>
+        <div class="form-row"><label>필터 (타입, qualifiedName, 동작)<input type="text" id="event-filter"></label></div>
+        <table>
+            <thead><tr><th>시간</th><th>동작</th><th>타입</th><th>qualifiedName</th><th></th></tr></thead>
+            <tbody id="events">
+            <tr th:each="e : ${events}" class="event-row">
+                <td th:text="${e.time()}"></td>
+                <td><span class="badge" th:text="${e.operation()}"></span></td>
+                <td th:text="${e.typeName()}"></td>
+                <td><a th:if="${e.guid()}" th:href="@{/entities/{g}(g=${e.guid()})}" th:text="${e.qualifiedName()} ?: ${e.guid()}"></a></td>
+                <td><details><summary class="small">원문</summary><pre class="code" data-lang="json" th:text="${e.json()}"></pre></details></td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
+    <section th:replace="~{fragments :: trace}"></section>
+</main>
+<aside class="help" th:replace="~{help/kafka :: help}"></aside>
+</div>
+<script th:inline="javascript">
+    const streamUrl = /*[[@{/events/stream}]]*/ '/events/stream';
+    const entityUrl = /*[[@{/entities/}]]*/ '/entities/';
+</script>
+<script>
+    (() => {
+        const body = document.getElementById('events');
+        const state = document.getElementById('stream-state');
+        const filter = document.getElementById('event-filter');
+        const applyFilter = () => {
+            const q = filter.value.toLowerCase();
+            body.querySelectorAll('tr').forEach(tr => tr.style.display = tr.textContent.toLowerCase().includes(q) ? '' : 'none');
+        };
+        filter.addEventListener('input', applyFilter);
+        const cell = (tr, text) => { const td = tr.insertCell(); td.textContent = text ?? ''; return td; };
+        const source = new EventSource(streamUrl);
+        source.onopen = () => { state.textContent = '실시간 수신 중'; state.className = 'badge ok'; };
+        source.onerror = () => { state.textContent = '연결 끊김 (재시도 중)'; state.className = 'badge err'; };
+        source.addEventListener('entity', msg => {
+            const e = JSON.parse(msg.data);
+            const tr = body.insertRow(0);
+            cell(tr, e.time);
+            const op = cell(tr, ''); const badge = document.createElement('span'); badge.className = 'badge ok'; badge.textContent = e.operation; op.appendChild(badge);
+            cell(tr, e.typeName);
+            const qn = cell(tr, '');
+            if (e.guid) { const a = document.createElement('a'); a.href = entityUrl + encodeURIComponent(e.guid); a.textContent = e.qualifiedName ?? e.guid; qn.appendChild(a); }
+            const raw = cell(tr, ''); const d = document.createElement('details'); const s = document.createElement('summary');
+            s.className = 'small'; s.textContent = '원문'; const pre = document.createElement('pre'); pre.textContent = e.json;
+            pre.className = 'code'; pre.dataset.lang = 'json';
+            d.append(s, pre); raw.appendChild(d);
+            window.demoCode.enhance(tr);
+            applyFilter();
+        });
+    })();
+</script>
+</body>
+</html>

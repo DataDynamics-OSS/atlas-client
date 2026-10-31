@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<body>
+<aside class="help" th:fragment="help">
+    <div th:replace="~{fragments :: helpTitle('엔티티 검색', 'Atlas에 등록된 메타데이터(엔티티)를 찾는 화면입니다.')}"></div>
+
+    <h3>엔티티란?</h3>
+    <p>Atlas는 회사의 데이터 자산을 기록해 두는 <span class="term">메타데이터 카탈로그</span>입니다.
+        "어떤 테이블이 있고, 누가 관리하며, 어디서 만들어졌는가"를 저장합니다.</p>
+    <p>여기서 테이블 하나, 컬럼 하나, ETL 작업 하나처럼 <b>Atlas에 등록된 대상 하나하나</b>를 <span class="term">엔티티(entity)</span>라고 합니다.
+        엔티티는 반드시 어떤 <span class="term">타입</span>에 속합니다. 타입은 "테이블이라면 이런 속성을 가진다"는 설계도이고,
+        엔티티는 그 설계도로 만든 실제 기록입니다. 프로그래밍에 비유하면 타입은 클래스, 엔티티는 객체입니다.</p>
+    <table>
+        <thead><tr><th>타입 (설계도)</th><th>엔티티 (실제 기록)</th></tr></thead>
+        <tbody>
+        <tr><td><code>hive_table</code></td><td><code>sales.orders@prod</code> 테이블</td></tr>
+        <tr><td><code>hive_column</code></td><td><code>sales.orders.amount@prod</code> 컬럼</td></tr>
+        <tr><td><code>console_demo_job</code></td><td><code>daily_sales_etl@demo</code> 작업</td></tr>
+        </tbody>
+    </table>
+
+    <h4>엔티티를 구별하는 두 가지 이름</h4>
+    <ul>
+        <li><span class="term">guid</span>: Atlas가 붙이는 고유 ID입니다(예: <code>2caf1346-5f5b-…</code>). 사람이 정하지 않습니다.</li>
+        <li><span class="term">qualifiedName</span>: 사람이 정하는 고유 이름입니다. 같은 타입 안에서는 겹치면 안 됩니다.
+            보통 <code>데이터베이스.테이블@클러스터</code>처럼 위치를 담아 짓습니다(예: <code>sales.orders@prod</code>).
+            이 클라이언트는 guid를 몰라도 <b>타입 + qualifiedName</b>으로 엔티티를 찾고 수정할 수 있게 해 줍니다.</li>
+    </ul>
+
+    <h4>상태(status)</h4>
+    <ul>
+        <li><code>ACTIVE</code>: 사용 중인 엔티티</li>
+        <li><code>DELETED</code>: 삭제된 엔티티. Atlas는 기본적으로 <b>지워도 기록을 남깁니다(soft delete)</b>.
+            완전히 없애려면 엔티티 상세 화면에서 purge합니다.</li>
+    </ul>
+
+    <h3>처음이라면</h3>
+    <ol>
+        <li>메뉴의 <a th:href="@{/samples}">샘플 데이터</a>에서 "만들기"를 누릅니다.</li>
+        <li>이 화면에서 typeName에 <code>console_demo_table</code>을 넣고 검색합니다.</li>
+        <li>결과에서 이름을 누르면 상세 화면으로 이동합니다.</li>
+    </ol>
+
+    <h3>검색 방식 세 가지</h3>
+    <table>
+        <thead><tr><th>방식</th><th>언제 쓰나</th><th>쓰는 입력</th></tr></thead>
+        <tbody>
+        <tr><td><b>basic</b></td><td>타입, classification, 속성 조건으로 찾을 때 (가장 많이 씀)</td><td>typeName, classification, query, 속성 필터</td></tr>
+        <tr><td><b>DSL</b></td><td>SQL과 비슷한 문장으로 복잡한 조건을 줄 때</td><td>query</td></tr>
+        <tr><td><b>full-text</b></td><td>어떤 속성에 있든 단어로 찾을 때</td><td>query</td></tr>
+        </tbody>
+    </table>
+    <p>방식을 고른 뒤 그 방식이 쓰는 칸만 채우면 됩니다. 나머지 칸은 무시됩니다.</p>
+
+    <h3>basic 검색 입력 방법</h3>
+    <h4>typeName</h4>
+    <p>찾을 엔티티의 타입 이름입니다. <b>하위 타입도 함께 찾습니다.</b> 예를 들어 <code>DataSet</code>을 넣으면
+        DataSet을 상속한 <code>console_demo_table</code>, <code>hive_table</code> 등이 모두 나옵니다.
+        타입 이름은 <a th:href="@{/types}">타입</a> 메뉴에서 확인할 수 있습니다.</p>
+    <h4>classification</h4>
+    <p>특정 분류(태그)가 붙은 엔티티만 찾습니다. 예: <code>console_demo_PII</code>.
+        typeName을 비우고 classification만 넣어도 됩니다.</p>
+    <h4>query</h4>
+    <p>basic에서는 이름이나 설명에 들어 있는 단어로 걸러냅니다. 예: <code>sales</code></p>
+    <h4>속성 필터 (속성, 연산자, 값)</h4>
+    <p>엔티티의 속성 값으로 조건을 겁니다. 세 칸을 함께 채웁니다.</p>
+    <table>
+        <thead><tr><th>속성</th><th>연산자</th><th>값</th><th>의미</th></tr></thead>
+        <tbody>
+        <tr><td><code>owner</code></td><td>EQ</td><td><code>kim</code></td><td>owner가 kim</td></tr>
+        <tr><td><code>tier</code></td><td>NEQ</td><td><code>BRONZE</code></td><td>tier가 BRONZE가 아님</td></tr>
+        <tr><td><code>rowCount</code></td><td>GT</td><td><code>1000</code></td><td>rowCount가 1000보다 큼</td></tr>
+        <tr><td><code>name</code></td><td>STARTS_WITH</td><td><code>daily</code></td><td>name이 daily로 시작</td></tr>
+        <tr><td><code>description</code></td><td>NOT_NULL</td><td>(비움)</td><td>description이 있음</td></tr>
+        </tbody>
+    </table>
+    <p>자주 쓰는 연산자: <code>EQ</code>(같음), <code>NEQ</code>(다름), <code>LT/GT/LTE/GTE</code>(작음/큼/이하/이상),
+        <code>STARTS_WITH/ENDS_WITH/CONTAINS</code>(문자열 포함), <code>IS_NULL/NOT_NULL</code>(값 없음/있음),
+        <code>IN</code>(여러 값 중 하나).</p>
+    <div class="tip">속성 이름은 엔티티 상세 화면의 "속성" 표 왼쪽 열에 있는 이름을 그대로 씁니다.
+        필터에 쓰는 속성은 타입 정의에서 검색 인덱스가 걸려 있어야(<code>isIndexable</code>) 결과가 정확합니다.</div>
+
+    <h4>이 화면이 Atlas에 보내는 요청</h4>
+    <p>typeName <code>console_demo_table</code>, 속성 필터 owner EQ kim으로 검색하면 클라이언트가 아래 JSON을
+        <code>POST /api/atlas/v2/search/basic</code>으로 보냅니다. 화면 아래 "이 화면에서 클라이언트가 보낸 요청"에서 실제 본문을 볼 수 있습니다.</p>
+    <pre class="code" data-lang="json">{"typeName":"console_demo_table","excludeDeletedEntities":true,"limit":25,"offset":0,"entityFilters":{"attributeName":"owner","operator":"=","attributeValue":"kim"}}</pre>
+    <p>Java 코드로는 이렇게 씁니다.</p>
+    <pre class="code" data-lang="java">SearchParameters params = SearchParameters.forType("console_demo_table");
+params.setEntityFilters(FilterCriteria.of("owner", Operator.EQ, "kim"));
+AtlasSearchResult result = atlas.search().basic(params);</pre>
+
+    <h3>DSL 검색 입력 방법</h3>
+    <p>방식을 DSL로 바꾸고 query 칸에 문장을 씁니다. <code>타입 이름 where 조건</code>이 기본 형태입니다.</p>
+    <pre class="code" data-lang="text">console_demo_table
+console_demo_table where tier = 'GOLD'
+console_demo_table where rowCount > 1000 and owner = 'kim'
+console_demo_table where name like 'daily*'
+console_demo_table isa console_demo_PII
+console_demo_table where owner = 'kim' orderby rowCount desc
+console_demo_table select name, owner, rowCount</pre>
+    <ul>
+        <li>문자열 값은 작은따옴표로 감쌉니다.</li>
+        <li><code>isa 분류이름</code>은 그 classification이 붙은 것만 찾습니다.</li>
+        <li><code>select</code>를 쓰면 엔티티 목록 대신 "select 결과" 표가 나옵니다.</li>
+        <li>문법이 틀리면 <code>AtlasBadRequestException</code>(HTTP 400)이 화면 위쪽에 표시됩니다.</li>
+    </ul>
+
+    <h3>full-text 검색</h3>
+    <p>query에 단어를 넣으면 이름, 설명 등 모든 텍스트 속성에서 찾습니다. 예: <code>sales</code>.
+        정확한 조건보다는 "이런 단어가 들어간 게 있나?"를 볼 때 씁니다.</p>
+
+    <h3>그 밖의 옵션</h3>
+    <ul>
+        <li><b>삭제된 엔티티 포함</b>: 체크하면 DELETED 상태도 결과에 나옵니다. 지운 엔티티를 purge하러 갈 때 씁니다.</li>
+        <li><b>limit / offset</b>: 한 번에 몇 건을 볼지, 몇 번째부터 볼지입니다. 결과 아래 "다음 →"을 누르면 offset이 늘어납니다.
+            Java에서는 <code>search().basicStream(params)</code>을 쓰면 페이지를 자동으로 넘기며 전부 읽습니다.</li>
+    </ul>
+
+    <h3>결과 읽는 법</h3>
+    <ul>
+        <li><b>표시 이름</b>을 누르면 엔티티 상세 화면으로 갑니다.</li>
+        <li><b>classification</b> 열에는 직접 붙인 것과 리니지를 따라 <b>전파된</b> 것이 함께 나옵니다.
+            샘플에서 customers에만 PII를 붙였는데 daily_sales에도 보이는 이유입니다.</li>
+        <li>"전체 약 N"은 Atlas가 알려주는 대략적인 전체 건수입니다.</li>
+    </ul>
+
+    <h3>결과가 안 나올 때</h3>
+    <ul>
+        <li><b>방금 만든 엔티티</b>: 검색은 별도 검색 인덱스(Solr)를 쓰므로 등록 직후 몇 초간 안 보일 수 있습니다. 잠시 뒤 다시 검색하세요.</li>
+        <li><b>타입 이름 오타</b>: 없는 타입이면 오류가 표시됩니다. <a th:href="@{/types}">타입</a> 메뉴에서 이름을 확인하세요.</li>
+        <li><b>속성 이름 오타</b>: 그 타입에 없는 속성으로 필터하면 오류가 나거나 결과가 비어 있습니다.</li>
+        <li><b>삭제된 엔티티</b>: "삭제된 엔티티 포함"을 체크해 보세요.</li>
+    </ul>
+    <p>엔티티를 새로 등록하려면 <a th:href="@{/entities/import}">CSV/YAML import</a>를 쓰세요.</p>
+</aside>
+</body>
+</html>

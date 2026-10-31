@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<body>
+<aside class="help" th:fragment="help">
+    <div th:replace="~{fragments :: helpTitle('타입 삭제', '타입을 지워도 되는지 먼저 검사하고, 문제가 없을 때만 지웁니다.')}"></div>
+
+    <h3>왜 미리 검사하나요?</h3>
+    <p>다른 곳에서 쓰는 타입을 지우면 Atlas가 거부하거나, 남은 메타데이터가 깨질 수 있습니다.
+        <code>planDelete()</code>는 지우기 전에 아래 항목을 확인해서 문제가 있으면 <b>ERROR</b>로 알려줍니다.</p>
+    <ul>
+        <li><b>하위 타입</b>: 이 타입을 superTypes로 상속하는 타입이 남아 있음</li>
+        <li><b>참조</b>: 다른 타입의 속성이나 relationship, classification이 이 타입을 가리킴</li>
+        <li><b>엔티티 인스턴스</b>: 이 타입의 엔티티가 남아 있음 (<b>soft delete된 것 포함</b>)</li>
+        <li><b>classification 사용</b>: 지우려는 classification이 엔티티에 붙어 있음</li>
+    </ul>
+
+    <h3>사용 순서</h3>
+    <ol>
+        <li>지울 타입 이름을 쉼표나 공백으로 구분해 넣고 <b>점검</b>을 누릅니다. 예: <code>console_sample_PII console_sample_table console_sample_tier</code></li>
+        <li>ERROR가 없으면 <b>삭제</b> 버튼이 나옵니다. 누르면 확인을 묻고 지웁니다.</li>
+        <li>ERROR가 있으면 메시지대로 먼저 정리합니다.</li>
+    </ol>
+    <div class="tip">함께 지우는 타입끼리는 서로 참조해도 괜찮습니다. 한 번의 요청(<code>DELETE /api/atlas/v2/types/typedefs</code>)으로 같이 지웁니다.
+        목록 밖의 타입이 참조하고 있을 때만 ERROR입니다.</div>
+    <div class="warn">RELATIONSHIP 타입은 남은 관계 인스턴스를 미리 검사할 수 없어 WARNING만 표시합니다. 관계가 남아 있으면 Atlas가 삭제를 거부합니다.</div>
+
+    <h3>"엔티티가 남아 있다"는 ERROR가 날 때</h3>
+    <ol>
+        <li><a th:href="@{/entities}">엔티티 검색</a>에서 그 타입으로, <b>"삭제된 엔티티 포함"</b>을 체크해 검색합니다.</li>
+        <li>각 엔티티 상세 화면에서 delete한 뒤 purge합니다. soft delete만 하면 여전히 남아 있는 것으로 봅니다.</li>
+        <li>다시 점검합니다.</li>
+    </ol>
+    <p>샘플 데이터의 타입은 <a th:href="@{/samples}">샘플 데이터</a> 화면의 "정리" 버튼이 이 과정을 한 번에 합니다.</p>
+
+    <h3>Java 코드로는</h3>
+    <pre class="code" data-lang="java">TypePlan plan = manager.planDelete(List.of("my_table", "my_tier"));
+if (!plan.hasErrors()) {
+    manager.delete(List.of("my_table", "my_tier"));
+}</pre>
+</aside>
+</body>
+</html>

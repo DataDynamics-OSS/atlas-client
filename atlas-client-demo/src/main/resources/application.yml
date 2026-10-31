@@ -1,0 +1,29 @@
+# Override with environment variables, e.g. ATLAS_URLS, ATLAS_KAFKA_BOOTSTRAP_SERVERS.
+atlas:
+  urls: http://localhost:21000
+  username: admin
+  password: admin
+  kafka:
+    bootstrap-servers: localhost:9092
+    user: atlas-client-demo
+
+server:
+  port: 8090
+
+spring:
+  application:
+    name: atlas-client-demo
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 20MB
+  mvc:
+    async:
+      # Server-sent events stay open.
+      request-timeout: -1
+  thymeleaf:
+    cache: false
+
+logging:
+  level:
+    io.datadynamics.atlas.client: INFO

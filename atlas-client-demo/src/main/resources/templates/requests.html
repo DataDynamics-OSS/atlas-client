@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head th:replace="~{fragments :: head('요청 기록')}"></head>
+<body>
+<header th:replace="~{fragments :: nav('requests')}"></header>
+<div class="layout">
+<main>
+    <h1>요청 기록</h1>
+    <p class="lead">클라이언트가 보낸 최근 요청입니다. <code>RequestListener</code>로 수집하며, 재시도는 시도마다 따로 기록됩니다.</p>
+    <form class="inline" method="post" th:action="@{/requests/clear}"><button class="secondary">기록 지우기</button></form>
+    <section class="panel" style="margin-top: 12px">
+        <p class="muted" th:if="${#lists.isEmpty(history)}">기록 없음</p>
+        <div th:replace="~{fragments :: requestTable(${history})}"></div>
+    </section>
+</main>
+<aside class="help" th:replace="~{help/requests :: help}"></aside>
+</div>
+</body>
+</html>

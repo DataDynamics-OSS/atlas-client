@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head th:replace="~{fragments :: head('타입')}"></head>
+<body>
+<header th:replace="~{fragments :: nav('types')}"></header>
+<div class="layout">
+<main>
+    <h1>타입</h1>
+    <p class="lead"><code>types().getHeaders()</code>로 읽은 타입 정의 목록입니다.
+        <a th:href="@{/types/plan}">plan/apply</a> · <a th:href="@{/types/delete}">안전한 삭제</a></p>
+    <form class="panel form-row" method="get">
+        <label>카테고리
+            <select name="category">
+                <option value="">전체</option>
+                <option th:each="c : ${categories}" th:value="${c}" th:text="${c}" th:selected="${c == category}"></option>
+            </select>
+        </label>
+        <label>이름 포함<input type="text" name="q" th:value="${q}"></label>
+        <button>필터</button>
+    </form>
+    <form class="panel form-row" method="get" th:action="@{/types/export}">
+        <label>serviceType으로 export (YAML)<input type="text" name="serviceType" placeholder="hive"></label>
+        <button class="secondary">다운로드</button>
+    </form>
+    <section class="panel">
+        <p class="muted" th:text="${#lists.size(headers)} + '개'"></p>
+        <table>
+            <thead><tr><th>이름</th><th>카테고리</th><th>serviceType</th><th>guid</th></tr></thead>
+            <tbody>
+            <tr th:each="h : ${headers}">
+                <td><a th:href="@{/types/{n}(n=${h.name})}" th:text="${h.name}"></a></td>
+                <td th:text="${h.category}"></td>
+                <td th:text="${h.serviceType}"></td>
+                <td class="muted small" th:text="${h.guid}"></td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
+    <section th:replace="~{fragments :: trace}"></section>
+</main>
+<aside class="help" th:replace="~{help/types-list :: help}"></aside>
+</div>
+</body>
+</html>

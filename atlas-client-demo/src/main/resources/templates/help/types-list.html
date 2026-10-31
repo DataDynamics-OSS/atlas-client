@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<body>
+<aside class="help" th:fragment="help">
+    <div th:replace="~{fragments :: helpTitle('타입', 'Atlas에 정의된 타입(메타데이터의 설계도) 목록입니다.')}"></div>
+
+    <h3>타입이란?</h3>
+    <p>Atlas에 무언가를 등록하려면 먼저 "그것이 어떤 모양인지"를 정해야 합니다. 이 설계도가 <span class="term">타입(type)</span>입니다.
+        예를 들어 <code>hive_table</code> 타입은 "테이블은 name, owner, columns, db를 가진다"고 정합니다.
+        실제 테이블 하나하나는 이 타입의 <span class="term">엔티티</span>로 등록됩니다.</p>
+    <p>Atlas에는 Hive, Kafka, HDFS 등을 위한 타입이 기본으로 들어 있고(serviceType으로 구분), 필요하면 직접 만들 수도 있습니다.</p>
+
+    <h3>카테고리</h3>
+    <p>타입은 쓰임새에 따라 여섯 가지로 나뉩니다. 위쪽 "카테고리"로 걸러 볼 수 있습니다.</p>
+    <table>
+        <thead><tr><th>카테고리</th><th>무엇인가</th><th>예</th></tr></thead>
+        <tbody>
+        <tr><td><b>ENTITY</b></td><td>등록 대상의 설계도. 가장 중요합니다.</td><td>hive_table, DataSet, Process</td></tr>
+        <tr><td><b>CLASSIFICATION</b></td><td>엔티티에 붙이는 분류 태그. 리니지로 전파될 수 있습니다.</td><td>PII, console_demo_PII</td></tr>
+        <tr><td><b>ENUM</b></td><td>정해진 값 목록. 속성 값으로 그 중 하나만 허용합니다.</td><td>console_demo_tier (BRONZE/SILVER/GOLD)</td></tr>
+        <tr><td><b>STRUCT</b></td><td>여러 값을 묶은 구조. 속성의 타입으로 씁니다.</td><td>hive_serde</td></tr>
+        <tr><td><b>RELATIONSHIP</b></td><td>두 엔티티 타입 사이의 연결 방법</td><td>hive_table_columns (테이블↔컬럼)</td></tr>
+        <tr><td><b>BUSINESS_METADATA</b></td><td>엔티티에 붙이는 업무 정보 묶음</td><td>console_demo_quality</td></tr>
+        </tbody>
+    </table>
+
+    <h3>상속 (superTypes)</h3>
+    <p>ENTITY 타입은 다른 타입을 상속해 속성을 물려받습니다. 기본 계층은 이렇습니다.</p>
+    <pre class="diagram">Referenceable      qualifiedName
+ └─ Asset          name, description, owner
+     ├─ DataSet    데이터 (테이블, 파일, 토픽)
+     │   └─ hive_table, console_demo_table …
+     └─ Process    작업. inputs, outputs
+         └─ hive_process, console_demo_job …</pre>
+    <p>오른쪽은 그 타입이 추가하는 대표 속성입니다. 하위 타입은 위쪽 속성을 모두 물려받습니다.
+        예를 들어 <code>console_demo_table</code>은 qualifiedName, name, owner를 따로 정의하지 않아도 가집니다.</p>
+    <p><b>DataSet</b>과 <b>Process</b>가 리니지의 핵심입니다. 리니지는 "DataSet → Process → DataSet" 모양의 그래프이기 때문입니다.
+        새 타입을 만들 때 데이터라면 DataSet을, 작업이라면 Process를 상속하면 리니지에 바로 나타납니다.</p>
+
+    <h3>이 화면 사용법</h3>
+    <ul>
+        <li><b>카테고리 / 이름 포함</b>: 목록을 걸러냅니다. 예: 카테고리 ENTITY, 이름 <code>demo</code></li>
+        <li><b>이름</b>을 누르면 정의 전체(속성 목록 등)를 볼 수 있습니다.</li>
+        <li><b>serviceType으로 export</b>: 그 serviceType의 정의를 YAML 파일로 내려받습니다. 예: <code>hive</code>.
+            guid나 생성 시간처럼 서버가 붙인 필드는 빼므로, 다른 Atlas에 그대로 적용할 수 있습니다.</li>
+        <li>위쪽 링크 <b>plan/apply</b>에서 타입을 만들거나 고치고, <b>안전한 삭제</b>에서 지웁니다.</li>
+    </ul>
+
+    <h3>이 화면이 쓰는 API</h3>
+    <pre class="code" data-lang="java">List&lt;AtlasTypeDefHeader&gt; headers = atlas.types().getHeaders();   // 이름, 카테고리, guid만
+Optional&lt;AtlasBaseTypeDef&gt; def = atlas.types().findByName("console_demo_table");
+AtlasTypesDef hive = new TypeDefManager(atlas).exportByServiceType("hive");</pre>
+    <p><code>getHeaders()</code>는 정의 전체가 아니라 요약만 받아 오므로 가볍습니다. 화면 아래 요청 기록에서
+        <code>GET /api/atlas/v2/types/typedefs/headers</code> 한 번만 호출한 것을 볼 수 있습니다.</p>
+</aside>
+</body>
+</html>

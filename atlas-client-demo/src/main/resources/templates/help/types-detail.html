@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<body>
+<aside class="help" th:fragment="help">
+    <div th:replace="~{fragments :: helpTitle('타입 정의', '타입 하나의 정의 전체를 보는 화면입니다.')}"></div>
+
+    <h3>두 가지 보기</h3>
+    <ul>
+        <li><b>export YAML</b>: 사람이 읽고 고치기 좋은 형태입니다. guid, 생성 시간, version 같은 <b>서버가 붙인 필드를 뺐기</b> 때문에
+            그대로 복사해 plan/apply에 쓰거나 다른 Atlas에 옮길 수 있습니다.</li>
+        <li><b>서버 응답 JSON</b>: Atlas가 돌려준 원본입니다. 서버 필드가 모두 있습니다.</li>
+    </ul>
+
+    <h3>정의 읽는 법 (ENTITY 타입)</h3>
+    <pre class="code" data-lang="yaml">entityDefs:
+  - name: console_demo_table          # 타입 이름
+    superTypes: [DataSet]             # 상속하는 타입
+    attributeDefs:                    # 이 타입이 추가로 가지는 속성
+      - name: tier
+        typeName: console_demo_tier   # 속성 값의 타입 (enum)
+        isOptional: true              # 비워도 되는가
+        cardinality: SINGLE           # 값 하나 (LIST/SET이면 여러 개)
+      - name: rowCount
+        typeName: long
+        isOptional: true</pre>
+    <table>
+        <thead><tr><th>필드</th><th>뜻</th></tr></thead>
+        <tbody>
+        <tr><td><code>typeName</code></td><td>값의 타입. <code>string</code>, <code>int</code>, <code>long</code>, <code>boolean</code>, <code>date</code>,
+            enum 이름, <code>array&lt;string&gt;</code>, 다른 엔티티 타입 이름(참조) 등</td></tr>
+        <tr><td><code>isOptional</code></td><td><code>false</code>면 필수 속성. 엔티티를 만들 때 반드시 값을 넣어야 합니다.</td></tr>
+        <tr><td><code>isUnique</code></td><td>같은 타입 안에서 값이 겹치면 안 됨 (qualifiedName이 대표적)</td></tr>
+        <tr><td><code>isIndexable</code></td><td>검색 인덱스를 만듦. 검색 필터에 쓸 속성이면 켭니다.</td></tr>
+        <tr><td><code>cardinality</code></td><td><code>SINGLE</code>(하나), <code>LIST</code>(순서 있는 여러 개), <code>SET</code>(중복 없는 여러 개)</td></tr>
+        </tbody>
+    </table>
+    <p>여기 보이는 속성은 이 타입이 <b>직접</b> 정의한 것뿐입니다. 상속받은 속성(qualifiedName, name, owner 등)은 superTypes의 정의에 있습니다.</p>
+
+    <h3>다른 카테고리</h3>
+    <ul>
+        <li><b>ENUM</b>: <code>elementDefs</code>에 허용 값 목록이 있습니다.</li>
+        <li><b>CLASSIFICATION</b>: <code>entityTypes</code>는 이 분류를 붙일 수 있는 엔티티 타입입니다(비어 있으면 모든 타입).</li>
+        <li><b>RELATIONSHIP</b>: <code>endDef1</code>, <code>endDef2</code>가 연결되는 두 타입과 각 쪽의 속성 이름입니다.
+            <code>relationshipCategory</code>가 <code>COMPOSITION</code>이면 부모를 지울 때 자식도 지워집니다.</li>
+        <li><b>BUSINESS_METADATA</b>: 속성마다 <code>options.applicableEntityTypes</code>에 적용 가능한 엔티티 타입이 있습니다.</li>
+    </ul>
+
+    <h3>버튼</h3>
+    <ul>
+        <li><b>이 정의로 plan 하기</b>: export YAML을 plan/apply 편집기에 채워 줍니다. 속성을 추가하는 등 고친 뒤 plan을 눌러 보세요.</li>
+        <li><b>삭제 점검</b>: 이 타입을 지워도 되는지 미리 검사합니다.</li>
+        <li><b>YAML 다운로드</b>: export YAML을 파일로 받습니다.</li>
+        <li><b>엔티티 검색</b>(ENTITY만): 이 타입의 엔티티를 찾습니다.</li>
+    </ul>
+</aside>
+</body>
+</html>

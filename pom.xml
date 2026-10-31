@@ -21,6 +21,7 @@
         <module>atlas-client-kafka</module>
         <module>atlas-client-cli</module>
         <module>atlas-client-it</module>
+        <module>atlas-client-demo</module>
     </modules>
 
     <properties>
@@ -131,21 +132,6 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
-
-    <profiles>
-        <!-- Optional web demo module; built only where its directory exists. -->
-        <profile>
-            <id>demo</id>
-            <activation>
-                <file>
-                    <exists>${basedir}/atlas-client-demo/pom.xml</exists>
-                </file>
-            </activation>
-            <modules>
-                <module>atlas-client-demo</module>
-            </modules>
-        </profile>
-    </profiles>
 
     <build>
         <pluginManagement>

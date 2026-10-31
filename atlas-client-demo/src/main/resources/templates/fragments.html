@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head th:fragment="head(title)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${title} + ' · Atlas Client Demo'">Atlas Client Demo</title>
+    <meta name="monaco-base" th:content="@{/webjars/monaco-editor/min/vs}">
+    <link rel="stylesheet" th:href="@{/css/demo.css}">
+    <script th:src="@{/js/demo.js}" defer></script>
+</head>
+<body>
+
+<header th:fragment="nav(active)" class="nav">
+    <a class="brand" th:href="@{/}">Atlas Client Demo</a>
+    <nav>
+        <a th:href="@{/}" th:classappend="${active == 'dashboard'} ? 'active'">대시보드</a>
+        <a th:href="@{/samples}" th:classappend="${active == 'samples'} ? 'active'">샘플 데이터</a>
+        <a th:href="@{/types}" th:classappend="${active == 'types'} ? 'active'">타입</a>
+        <a th:href="@{/entities}" th:classappend="${active == 'entities'} ? 'active'">엔티티</a>
+        <a th:href="@{/lineage}" th:classappend="${active == 'lineage'} ? 'active'">리니지</a>
+        <a th:href="@{/kafka}" th:classappend="${active == 'kafka'} ? 'active'" th:if="${kafkaEnabled}">Kafka</a>
+        <a th:href="@{/check}" th:classappend="${active == 'check'} ? 'active'">정합성 점검</a>
+        <a th:href="@{/requests}" th:classappend="${active == 'requests'} ? 'active'">요청 기록</a>
+    </nav>
+    <button type="button" class="help-toggle" data-help-toggle title="도움말 보이기/숨기기">? 도움말</button>
+</header>
+
+<div th:fragment="alerts">
+    <div class="alert ok" th:if="${message}" th:text="${message}"></div>
+    <div class="alert error" th:if="${failure}">
+        <strong th:text="${failure.simpleType()}">AtlasNotFoundException</strong>
+        <span class="badge" th:if="${failure.status()}" th:text="'HTTP ' + ${failure.status()}"></span>
+        <code th:if="${failure.errorCode()}" th:text="${failure.errorCode()}"></code>
+        <div class="pre-wrap" th:text="${failure.message()}"></div>
+        <ul th:unless="${#lists.isEmpty(failure.details())}">
+            <li th:each="d : ${failure.details()}" th:text="${d}"></li>
+        </ul>
+        <div class="muted small" th:text="${failure.type()}"></div>
+    </div>
+</div>
+
+<!-- The client requests made while handling this page: the point of the demo. -->
+<section th:fragment="trace" class="trace" th:if="${trace != null}">
+    <h3>이 화면에서 클라이언트가 보낸 요청 <span class="muted" th:text="'(' + ${#lists.size(trace)} + ')'"></span></h3>
+    <p class="muted small" th:if="${#lists.isEmpty(trace)}">Atlas REST 요청 없음</p>
+    <div th:replace="~{fragments :: requestTable(${trace})}"></div>
+</section>
+
+<table th:fragment="requestTable(requests)" class="requests" th:unless="${#lists.isEmpty(requests)}">
+    <thead><tr><th>#</th><th>메서드</th><th>경로</th><th>시도</th><th>상태</th><th>시간</th></tr></thead>
+    <tbody>
+    <th:block th:each="r : ${requests}">
+        <tr class="request-row" th:classappend="${r.isSuccess()} ? '' : 'failed'">
+            <td th:text="${r.id()}"></td>
+            <td><span class="method" th:text="${r.method()}"></span></td>
+            <td class="path">
+                <details>
+                    <summary th:text="${r.path()}"></summary>
+                    <div class="muted small" th:text="${r.uri()}"></div>
+                    <div th:if="${r.requestBody()}"><h4>요청 본문</h4><pre class="code" data-lang="json" th:text="${r.requestBody()}"></pre></div>
+                    <div th:if="${r.responseBody()}"><h4>응답 본문</h4><pre class="code" data-lang="json" th:text="${r.responseBody()}"></pre></div>
+                    <div th:if="${r.failure()}"><h4>실패</h4><pre class="code" data-lang="text" th:text="${r.failure()}"></pre></div>
+                </details>
+            </td>
+            <td th:text="${r.attempt()}"></td>
+            <td th:text="${r.statusCode() < 0} ? '연결 실패' : ${r.statusCode()}"></td>
+            <td th:text="${r.elapsedMillis()} + ' ms'"></td>
+        </tr>
+    </th:block>
+    </tbody>
+</table>
+
+<div th:fragment="helpTitle(title, lead)">
+    <div class="help-title"><h2 th:text="'도움말 · ' + ${title}">도움말</h2>
+        <button type="button" data-help-toggle title="도움말 숨기기">×</button></div>
+    <p class="help-lead" th:text="${lead}"></p>
+</div>
+
+</body>
+</html>

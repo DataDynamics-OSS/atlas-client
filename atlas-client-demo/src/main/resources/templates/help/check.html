@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<body>
+<aside class="help" th:fragment="help">
+    <div th:replace="~{fragments :: helpTitle('정합성 점검', 'Atlas가 막지 않는 메타데이터 문제를 찾아냅니다. CLI의 atlas check와 같습니다.')}"></div>
+
+    <h3>왜 필요한가요?</h3>
+    <p>Atlas는 엔티티 하나하나가 형식에 맞는지만 검사합니다. 그래서 형식은 맞지만 <b>의미상 이상한</b> 상태가 쌓일 수 있습니다.
+        예를 들어 테이블을 지웠는데 그 테이블을 읽던 작업은 남아 있으면, 리니지가 중간에 끊깁니다.
+        이 화면은 그런 문제를 찾아 목록으로 보여줍니다. 정기적으로 돌려 메타데이터를 깨끗하게 유지할 때 씁니다.</p>
+
+    <h3>찾는 문제</h3>
+    <table>
+        <thead><tr><th>종류</th><th>뜻</th><th>보통 원인</th></tr></thead>
+        <tbody>
+        <tr><td><code>ORPHAN_PROCESS</code></td><td>inputs도 outputs도 없는 프로세스. 리니지에 아무 기여를 못 함</td><td>잘못 등록했거나 연결된 데이터셋이 모두 지워짐</td></tr>
+        <tr><td><code>INCOMPLETE_PROCESS</code></td><td>inputs나 outputs 한쪽만 있는 프로세스</td><td>한쪽 데이터셋이 지워짐, 등록 누락</td></tr>
+        <tr><td><code>DELETED_REFERENCE</code></td><td>현재 연결이 삭제된 엔티티를 가리킴</td><td>데이터셋을 지웠는데 프로세스를 고치지 않음</td></tr>
+        <tr><td><code>DUPLICATE</code></td><td>같은 타입에 qualifiedName이 같은 ACTIVE 엔티티가 여러 개</td><td>qualifiedName 규칙이 일관되지 않은 수집</td></tr>
+        </tbody>
+    </table>
+
+    <h3>입력 방법</h3>
+    <ul>
+        <li><b>process 타입</b>: 이 타입과 그 하위 타입의 모든 프로세스를 검사합니다. 기본 <code>Process</code>는 모든 프로세스를 뜻합니다.
+            프로세스 검사를 건너뛰려면 비웁니다.</li>
+        <li><b>중복 검사할 타입</b>: qualifiedName 중복을 찾을 타입입니다. 쉼표로 여러 개를 넣을 수 있습니다. 예: <code>console_demo_table, DataSet</code></li>
+    </ul>
+
+    <h3>직접 해 보기</h3>
+    <ol>
+        <li><a th:href="@{/samples}">샘플 데이터</a>를 만들고 여기서 점검하면 "문제 없음"이 나옵니다.</li>
+        <li><a th:href="@{/entities(search=1,typeName='console_demo_table',query='orders')}">raw.orders</a>와
+            raw.customers 엔티티를 상세 화면에서 delete합니다.</li>
+        <li>잠시 뒤 다시 점검하면 <code>daily_sales_etl@demo</code>가 <code>INCOMPLETE_PROCESS</code>로 나옵니다(입력이 모두 사라짐).</li>
+        <li>샘플 화면에서 "다시 만들기"를 누르면 원래대로 돌아옵니다.</li>
+    </ol>
+
+    <h3>알아 둘 점</h3>
+    <ul>
+        <li>점검은 검색 인덱스로 대상을 찾으므로 <b>방금 바꾼 내용은 몇 초 뒤에</b> 반영됩니다.</li>
+        <li>프로세스가 많으면 100개씩 묶어 조회하므로 요청 기록에 bulk 조회가 여러 번 나옵니다.</li>
+        <li>찾기만 하고 고치지는 않습니다. 결과의 qualifiedName을 눌러 엔티티를 직접 정리하세요.</li>
+    </ul>
+
+    <h3>Java 코드로는</h3>
+    <pre class="code" data-lang="java">ConsistencyChecker checker = new ConsistencyChecker(atlas);
+List&lt;Finding&gt; findings = new ArrayList&lt;&gt;(checker.checkProcesses("Process"));
+findings.addAll(checker.checkDuplicates("hive_table"));</pre>
+</aside>
+</body>
+</html>

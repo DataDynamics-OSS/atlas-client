@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<body>
+<aside class="help" th:fragment="help">
+    <div th:replace="~{fragments :: helpTitle('리니지', '데이터가 어디서 와서 어디로 가는지 그래프로 보고, 영향 범위를 분석합니다.')}"></div>
+
+    <h3>리니지란?</h3>
+    <p><span class="term">리니지(lineage, 계보)</span>는 데이터의 흐름 기록입니다. "이 매출 집계 테이블은 주문 테이블과 고객 테이블을
+        ETL 작업으로 합쳐서 만든다"는 사실을 Atlas에 남겨 두면, 나중에 이런 질문에 답할 수 있습니다.</p>
+    <ul>
+        <li>이 리포트 숫자가 이상한데, <b>원천 데이터</b>가 뭐지? (상류, upstream)</li>
+        <li>주문 테이블 구조를 바꾸면 <b>어떤 테이블과 리포트가 영향</b>을 받지? (하류, downstream)</li>
+    </ul>
+    <p>Atlas의 리니지는 두 종류의 노드로 이루어집니다.</p>
+    <ul>
+        <li><b>데이터셋(DataSet)</b>: 테이블, 파일, 토픽 등 데이터. 그래프에서 <b>네모</b>입니다.</li>
+        <li><b>프로세스(Process)</b>: 데이터를 읽어 데이터를 만드는 작업. <code>inputs</code>와 <code>outputs</code>를 가집니다. 그래프에서 <b>둥근 상자</b>입니다.</li>
+    </ul>
+    <pre class="diagram">raw.orders ─────┐
+                ├─▶ (daily_sales_etl) ─▶ mart.daily_sales
+raw.customers ──┘
+
+mart.daily_sales ─▶ (sales_kpi_report) ─▶ report.sales_kpi
+
+네모 = 데이터셋, (괄호) = 프로세스</pre>
+    <p>샘플 데이터를 만들면 위 리니지가 생깁니다.</p>
+
+    <h3>입력 방법</h3>
+    <p>그래프의 <b>기준(base)</b>이 될 엔티티를 두 방법 중 하나로 지정합니다.</p>
+    <ul>
+        <li><b>typeName + qualifiedName</b>: 예) <code>console_demo_table</code> + <code>mart.daily_sales@demo</code>.
+            guid를 몰라도 됩니다.</li>
+        <li><b>guid</b>: 엔티티 상세 화면의 "리니지 보기"를 누르면 guid가 채워집니다. guid를 넣으면 typeName/qualifiedName은 무시합니다.</li>
+    </ul>
+    <p>데이터셋뿐 아니라 프로세스도 기준으로 지정할 수 있습니다.</p>
+    <h4>방향</h4>
+    <ul>
+        <li><code>BOTH</code>: 상류와 하류 모두 (기본)</li>
+        <li><code>INPUT</code>: 상류만. 이 데이터가 무엇으로 만들어졌나</li>
+        <li><code>OUTPUT</code>: 하류만. 이 데이터로 무엇이 만들어지나</li>
+    </ul>
+    <h4>depth</h4>
+    <p>몇 단계까지 따라갈지입니다. 1단계 = 프로세스 하나를 건너는 것입니다. 큰 시스템에서는 작게 시작해 늘려 가세요.
+        위 예에서 <code>raw.orders</code> 기준 depth 1이면 <code>mart.daily_sales</code>까지, depth 2면 <code>report.sales_kpi</code>까지 보입니다.</p>
+    <h4>삭제된 relationship 포함</h4>
+    <p>프로세스의 inputs/outputs를 바꿔 다시 등록하면, Atlas는 이전 연결을 지우지 않고 "삭제됨"으로 남깁니다.
+        그런데 Atlas 리니지 API는 이 지워진 연결도 함께 돌려줍니다. 이 클라이언트는 기본으로 그런 연결을 걸러 <b>현재 리니지만</b> 보여줍니다.
+        체크하면 과거 연결까지 모두 봅니다.</p>
+
+    <h3>그래프 읽는 법</h3>
+    <ul>
+        <li>화살표는 데이터가 흐르는 방향입니다(입력 → 프로세스 → 출력).</li>
+        <li><b>굵은 테두리</b>가 기준 엔티티입니다.</li>
+        <li><b>점선</b> 노드는 삭제된 엔티티입니다.</li>
+        <li>노드 안 두 번째 줄은 타입 이름입니다.</li>
+    </ul>
+    <p>그래프 아래 "Mermaid / DOT 원문"은 그래프를 텍스트로 표현한 것입니다. 문서(위키, GitHub의 Markdown)나 Graphviz에 붙여 넣으면 같은 그림이 나옵니다.</p>
+
+    <h3>영향도와 원천</h3>
+    <ul>
+        <li><b>영향도</b>(<code>impactOf</code>): 기준 엔티티가 바뀌면 영향받는 하류 데이터셋입니다. <b>거리</b>는 사이에 있는 프로세스 수(1 = 바로 다음)이고,
+            <b>경로</b>는 그곳까지 가는 가장 짧은 길입니다. 가까운 순으로 나옵니다.</li>
+        <li><b>원천</b>(<code>sourcesOf</code>): 기준 엔티티를 만드는 데 쓰인 상류 데이터셋입니다.</li>
+    </ul>
+    <p>방향이 INPUT이면 영향도가, OUTPUT이면 원천이 비어 있는 게 정상입니다.</p>
+
+    <h3>노드 표</h3>
+    <p>그래프의 모든 노드를 표로 보여줍니다. 이름을 누르면 엔티티 상세로, <b>"기준으로"</b>를 누르면 그 노드를 기준으로 다시 그립니다.
+        큰 그래프를 한 걸음씩 따라갈 때 편리합니다.</p>
+
+    <h3>Java 코드로는</h3>
+    <pre class="code" data-lang="java">AtlasLineage lineage = new AtlasLineage(atlas);
+LineageGraph graph = lineage.graph(EntityRef.of("console_demo_table", "mart.daily_sales@demo"),
+        LineageDirection.BOTH, 3);
+graph.upstreamDatasets(graph.base());          // 상류 데이터셋
+String mermaid = graph.toMermaid();
+
+for (Impact i : lineage.impact(EntityRef.of("console_demo_table", "raw.orders@demo"), 5)) {
+    System.out.println(i.dataset().label() + " distance=" + i.distance());
+}</pre>
+    <p>요청 기록을 보면 리니지 API 호출 뒤에 타입 정의 조회(어떤 타입이 프로세스인지 판단)와 bulk 엔티티 조회(삭제된 연결 확인)가 이어집니다.
+        타입 판단 결과는 캐시하므로 같은 타입은 다시 묻지 않습니다.</p>
+
+    <h3>그래프가 비어 있거나 오류가 날 때</h3>
+    <ul>
+        <li><code>AtlasNotFoundException</code>: 그 typeName + qualifiedName의 엔티티가 없습니다. 오타를 확인하세요.</li>
+        <li>노드가 기준 하나뿐: 아직 이 엔티티를 inputs/outputs로 쓰는 프로세스가 없습니다. <a th:href="@{/lineage/register}">리니지 등록</a>에서 만들어 보세요.</li>
+    </ul>
+</aside>
+</body>
+</html>

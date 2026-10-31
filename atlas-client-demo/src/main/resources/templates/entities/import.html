@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head th:replace="~{fragments :: head('엔티티 import')}"></head>
+<body>
+<header th:replace="~{fragments :: nav('entities')}"></header>
+<div class="layout">
+<main>
+    <h1>엔티티 import</h1>
+    <p class="lead"><code>atlas entities import</code>와 같은 <code>EntityFiles</code>로 읽고, 100건씩 qualifiedName 기준 upsert합니다.
+        같은 배치 안의 참조는 placeholder guid로 연결합니다.</p>
+    <div th:replace="~{fragments :: alerts}"></div>
+    <form class="panel" method="post" th:action="@{/entities/import}" enctype="multipart/form-data">
+        <div class="form-row">
+            <label>형식
+                <select name="format">
+                    <option th:each="f : ${ {'yaml', 'json', 'csv'} }" th:value="${f}" th:text="${f}" th:selected="${f == format}"></option>
+                </select>
+            </label>
+            <label>기본 타입 (typeName 없는 행)<input type="text" name="defaultType" th:value="${defaultType}" placeholder="DataSet"></label>
+            <label>또는 파일 (.csv, .json, .yaml)<input type="file" name="file"></label>
+        </div>
+        <textarea name="text" rows="16" data-editor="yaml" data-editor-language-from="format" th:text="${text}"></textarea>
+        <details class="small muted"><summary>CSV 헤더 문법</summary>
+            <p>문법은 오른쪽 도움말의 "CSV 헤더 문법"을 보세요.</p></details>
+        <div class="form-row" style="margin-top: 12px">
+            <button>import</button>
+            <button name="dryRun" value="true" class="secondary">dry run (읽기만)</button>
+        </div>
+    </form>
+    <section class="panel" th:if="${responses != null and !#lists.isEmpty(responses)}">
+        <h2>결과</h2>
+        <div th:each="r, s : ${responses}">
+            <h3 th:text="'배치 ' + ${s.count} + ': ' + ${r.summary()}"></h3>
+            <div th:each="h : ${r.created()}">+ <a th:href="@{/entities/{g}(g=${h.guid})}" th:text="${h.typeName} + ' ' + ${h.qualifiedName()}"></a></div>
+            <div th:each="h : ${r.updated()}">~ <a th:href="@{/entities/{g}(g=${h.guid})}" th:text="${h.typeName} + ' ' + ${h.qualifiedName()}"></a></div>
+        </div>
+    </section>
+    <section class="panel" th:if="${parsedJson}">
+        <details><summary th:text="'읽은 엔티티 ' + ${#lists.size(parsed)} + '개 (JSON)'"></summary><pre class="code" data-lang="json" th:text="${parsedJson}"></pre></details>
+    </section>
+    <section th:replace="~{fragments :: trace}"></section>
+</main>
+<aside class="help" th:replace="~{help/entities-import :: help}"></aside>
+</div>
+</body>
+</html>

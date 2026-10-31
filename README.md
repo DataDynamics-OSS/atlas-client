@@ -13,6 +13,7 @@ Apache Atlas REST API를 쉽게 쓰기 위한 Java 클라이언트입니다. Had
 | `atlas-client-cli` | `atlas` 명령: 타입 plan/apply/export/delete, CSV·YAML 대량 등록, 리니지 조회, 정합성 점검, 이벤트 tail | 구현 |
 | `atlas-client-test` | 단위 테스트용 가짜 Atlas 서버(`FakeAtlasServer`), Testcontainers 기반 `AtlasContainer` | 구현 |
 | `atlas-client-it` | 실제 Atlas 대상 통합 테스트 (`-Pit`) | 구현 |
+| `atlas-client-demo` | 위 모듈의 기능을 브라우저에서 실행해 보는 Spring Boot 웹 앱. Atlas·Kafka와 함께 docker compose로 기동 | 구현 |
 
 ## 빌드
 
@@ -226,6 +227,18 @@ atlas events tail --bootstrap-servers kafka:9092 --type hive_table --qualified-n
 - **파일 읽기 API**: `EntityFiles.parse(fileName, text, defaultType)`와 `EntityFiles.linkWithinBatch(batch)`로 애플리케이션에서도 `entities import`와 같은 형식을 읽을 수 있습니다.
 - **check**: process 중 inputs와 outputs가 모두 없는 것, 한쪽이 없는 것(삭제된 데이터셋 때문인 경우 포함), 삭제된 엔티티를 가리키는 활성 edge, qualifiedName 중복을 찾습니다. 검색 인덱스를 쓰므로 방금 만든 엔티티는 잠시 뒤에 잡힐 수 있습니다.
 - **종료 코드**: 0 성공, 1 실패·문제 발견·확인 거부, 2 잘못된 명령. `ATLAS_CLI_DEBUG=1`이면 stack trace도 출력합니다.
+
+## 데모 앱 (atlas-client-demo)
+
+라이브러리의 기능을 브라우저에서 직접 실행해 보는 웹 앱입니다. 각 화면은 라이브러리 메서드를 호출하고, 결과와 함께 클라이언트가 Atlas에 실제로 보낸 HTTP 요청을 보여줍니다.
+화면마다 처음 쓰는 사람을 위한 도움말이 함께 나옵니다. Docker만 있으면 Atlas, Kafka와 함께 띄울 수 있습니다.
+
+```bash
+docker compose -f docker/compose.yaml up -d --build --wait   # 첫 기동은 Atlas 초기화로 몇 분 걸림
+# http://localhost:8090 → "샘플 데이터"에서 만들기
+```
+
+사용법은 [atlas-client-demo/README.md](atlas-client-demo/README.md), 실습 환경 구성(포트, 다른 장비에서 접속, 데이터 초기화)은 [docker/README.md](docker/README.md)를 보세요.
 
 ## 테스트 지원 (atlas-client-test)
 
