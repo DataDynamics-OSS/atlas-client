@@ -12,10 +12,15 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * Result of an entity create/update/delete call.
+ * 엔티티 생성·수정·삭제 호출의 결과입니다.
+ * <p>
+ * 작업 종류({@link EntityOperation})별로 영향을 받은 엔티티 요약 목록과, 임시 guid에서 실제 guid로의 대응표를
+ * 담습니다. {@link #created()}, {@link #updated()}, {@link #deleted()} 같은 도우미는 해당 작업이 없을 때
+ * {@code null} 대신 빈 목록을 돌려줍니다.
  */
 public class EntityMutationResponse extends AtlasModel {
 
+    /** 엔티티에 적용된 작업의 종류입니다. */
     public enum EntityOperation {
         CREATE,
         UPDATE,
@@ -27,6 +32,7 @@ public class EntityMutationResponse extends AtlasModel {
     private Map<EntityOperation, List<AtlasEntityHeader>> mutatedEntities;
     private Map<String, String> guidAssignments;
 
+    /** 작업 종류별로 영향을 받은 엔티티 요약 목록을 돌려줍니다. 응답에 없으면 {@code null}일 수 있습니다. */
     public Map<EntityOperation, List<AtlasEntityHeader>> getMutatedEntities() {
         return mutatedEntities;
     }
@@ -35,7 +41,7 @@ public class EntityMutationResponse extends AtlasModel {
         this.mutatedEntities = mutatedEntities;
     }
 
-    /** Placeholder (negative) guid to the guid assigned by Atlas. */
+    /** 요청에 쓴 임시(음수) guid에서 Atlas가 부여한 실제 guid로의 맵을 돌려줍니다. */
     public Map<String, String> getGuidAssignments() {
         return guidAssignments;
     }
@@ -44,6 +50,12 @@ public class EntityMutationResponse extends AtlasModel {
         this.guidAssignments = guidAssignments;
     }
 
+    /**
+     * 한 작업 종류에 해당하는 엔티티 목록을 돌려줍니다.
+     *
+     * @param operation 작업 종류
+     * @return 엔티티 요약 목록, 없으면 빈 목록(수정할 수 없을 수 있습니다)
+     */
     public List<AtlasEntityHeader> get(EntityOperation operation) {
         if (mutatedEntities == null) {
             return Collections.emptyList();
@@ -51,11 +63,12 @@ public class EntityMutationResponse extends AtlasModel {
         return mutatedEntities.getOrDefault(operation, Collections.emptyList());
     }
 
+    /** 새로 생성된 엔티티 목록을 돌려줍니다. 없으면 빈 목록입니다. */
     public List<AtlasEntityHeader> created() {
         return get(EntityOperation.CREATE);
     }
 
-    /** Fully and partially updated entities. */
+    /** 전체 수정(UPDATE)과 부분 수정(PARTIAL_UPDATE)된 엔티티를 합친 목록을 돌려줍니다. 없으면 빈 목록입니다. */
     public List<AtlasEntityHeader> updated() {
         List<AtlasEntityHeader> partial = get(EntityOperation.PARTIAL_UPDATE);
         if (partial.isEmpty()) {
@@ -65,11 +78,12 @@ public class EntityMutationResponse extends AtlasModel {
                 .collect(Collectors.toList());
     }
 
+    /** 삭제(DELETE)된 엔티티 목록을 돌려줍니다. PURGE된 엔티티는 포함하지 않습니다. 없으면 빈 목록입니다. */
     public List<AtlasEntityHeader> deleted() {
         return get(EntityOperation.DELETE);
     }
 
-    /** Number of entities affected per operation; handy for logging. */
+    /** 작업 종류별로 영향을 받은 엔티티 수를 돌려줍니다. 로그를 남길 때 편리합니다. */
     public Map<EntityOperation, Integer> summary() {
         Map<EntityOperation, Integer> summary = new EnumMap<>(EntityOperation.class);
         if (mutatedEntities != null) {
@@ -79,8 +93,15 @@ public class EntityMutationResponse extends AtlasModel {
     }
 
     /**
-     * The guid of the first created or updated entity of the given type with the given
-     * {@code qualifiedName}. Useful right after an upsert of a single entity.
+     * 주어진 타입과 {@code qualifiedName}을 가진, 처음으로 생성되거나 수정된 엔티티의 guid를 찾습니다.
+     * 엔티티 하나를 생성 또는 수정(upsert)한 직후에 그 guid를 얻을 때 유용합니다.
+     * <p>
+     * 응답에 담긴 모든 작업 종류를 살펴보므로 삭제된 엔티티도 대상이 될 수 있습니다. 엔티티 요약에
+     * {@code qualifiedName} 속성이 들어 있어야 찾을 수 있습니다.
+     *
+     * @param typeName      엔티티 타입 이름
+     * @param qualifiedName 엔티티의 qualifiedName
+     * @return 찾은 guid, 없으면 빈 {@link Optional}
      */
     public Optional<String> findGuid(String typeName, String qualifiedName) {
         if (mutatedEntities == null) {
@@ -94,7 +115,7 @@ public class EntityMutationResponse extends AtlasModel {
                 .findFirst();
     }
 
-    /** Guid of the first mutated entity, regardless of operation. */
+    /** 작업 종류와 상관없이, 응답에 담긴 첫 번째 엔티티의 guid를 돌려줍니다. 엔티티가 없으면 빈 {@link Optional}입니다. */
     public Optional<String> firstGuid() {
         if (mutatedEntities == null) {
             return Optional.empty();

@@ -1,8 +1,12 @@
-# Override with environment variables, e.g. ATLAS_URLS, ATLAS_KAFKA_BOOTSTRAP_SERVERS.
+# 데모 애플리케이션 설정입니다. 환경 변수로 덮어쓸 수 있습니다. 예: ATLAS_URLS, ATLAS_KAFKA_BOOTSTRAP_SERVERS.
+# atlas.* 값은 DemoProperties로 바인딩됩니다.
 atlas:
+  # 쉼표로 구분해 여러 서버를 적으면 HA 구성으로 동작합니다.
   urls: http://localhost:21000
   username: admin
   password: admin
+  # bootstrap-servers를 비워 두면 Kafka 관련 페이지와 기능이 꺼집니다.
+  # user는 hook 메시지에 기록되는 사용자 이름입니다.
   kafka:
     bootstrap-servers: localhost:9092
     user: atlas-client-demo
@@ -14,14 +18,16 @@ spring:
   application:
     name: atlas-client-demo
   servlet:
+    # 엔티티 가져오기 페이지에서 올리는 파일의 최대 크기입니다.
     multipart:
       max-file-size: 20MB
       max-request-size: 20MB
   mvc:
     async:
-      # Server-sent events stay open.
+      # 엔티티 이벤트를 보내는 server-sent events 연결은 계속 열려 있어야 하므로 비동기 요청 제한 시간을 두지 않습니다.
       request-timeout: -1
   thymeleaf:
+    # 템플릿을 고치면 재시작 없이 바로 반영되도록 캐시를 끕니다.
     cache: false
 
 logging:

@@ -1,13 +1,16 @@
 package io.datadynamics.atlas.client.lineage;
 
+/** 리니지 테스트에서 함께 쓰는 Atlas 리니지 응답 JSON입니다. */
 public final class LineageFixtures {
 
     /**
+     * 기준 엔티티가 {@code daily}인 양방향 리니지 응답입니다. 그래프 모양은 다음과 같습니다.
+     * {@code etl_job} 타입이 프로세스이고, {@code dashboard}는 삭제(DELETED) 상태입니다.
      * <pre>
      * sales ----\
      *            p_agg --> daily --> p_report --> dashboard (deleted)
      * customer -/           ^  \
-     *                       \- p_fix (reads and writes daily: a cycle)
+     *                       \- p_fix (daily를 읽고 다시 쓰는 순환)
      * </pre>
      */
     public static final String LINEAGE = "{\"baseEntityGuid\":\"daily\",\"lineageDirection\":\"BOTH\",\"lineageDepth\":3,"

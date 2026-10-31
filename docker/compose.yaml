@@ -1,14 +1,15 @@
-# Atlas + Kafka + Atlas Client Demo.
+# Atlas + Kafka + Atlas Client Demo를 한 번에 띄우는 Docker Compose 구성입니다.
 #
 #   docker compose -f docker/compose.yaml up -d --build
 #
-# Atlas takes several minutes to become ACTIVE on first start; the demo shows its status meanwhile.
-# Host ports can be changed with ATLAS_PORT, KAFKA_PORT and DEMO_PORT. To reach the stack from other
-# machines, set BIND_ADDRESS (host interface the ports listen on) and ADVERTISED_HOST (address Kafka
-# gives to clients outside Docker), e.g. in docker/.env.
+# 처음 시작할 때 Atlas가 ACTIVE 상태가 되기까지 몇 분이 걸립니다. 그동안 데모 화면은 Atlas 상태를 보여 줍니다.
+# 호스트 포트는 ATLAS_PORT, KAFKA_PORT, DEMO_PORT로 바꿀 수 있습니다. 다른 컴퓨터에서 접속하려면
+# BIND_ADDRESS(포트를 열 호스트 네트워크 인터페이스)와 ADVERTISED_HOST(Docker 밖의 클라이언트에게 Kafka가
+# 알려 줄 주소)를 설정합니다. 예를 들어 docker/.env에 적어 둘 수 있습니다.
 name: atlas-client
 
 services:
+  # KRaft 모드(ZooKeeper 없이)로 동작하는 단일 노드 Kafka입니다. 브로커와 컨트롤러를 한 프로세스가 맡습니다.
   kafka:
     image: apache/kafka:3.9.1
     environment:
@@ -16,17 +17,19 @@ services:
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      # INTERNAL for Atlas and the demo, EXTERNAL for clients on the host (CLI, IDE).
+      # INTERNAL은 Atlas와 데모(같은 Docker 네트워크)용, EXTERNAL은 호스트의 클라이언트(CLI, IDE)용 리스너입니다.
       KAFKA_LISTENERS: INTERNAL://:19092,EXTERNAL://:9092,CONTROLLER://:9093
       KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:19092,EXTERNAL://${ADVERTISED_HOST:-localhost}:${KAFKA_PORT:-9092}
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      # 브로커가 하나뿐이므로 내부 토픽의 복제 수를 1로 낮춥니다.
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
     ports:
       - "${BIND_ADDRESS:-0.0.0.0}:${KAFKA_PORT:-9092}:9092"
+    # 브로커가 요청에 응답하면 정상으로 봅니다. Atlas와 데모는 이 상태를 기다린 뒤 시작합니다.
     healthcheck:
       test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:19092 > /dev/null"]
       interval: 10s
@@ -38,7 +41,8 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
-    # The embedded Kafka of this image is only reachable inside the container: use the kafka service.
+    # 이 이미지에 내장된 Kafka는 컨테이너 안에서만 접근할 수 있습니다. 그래서 내장 Kafka를 끄고
+    # kafka 서비스를 쓰도록 설정 파일을 고친 뒤 Atlas를 시작하고, 로그를 계속 출력해 컨테이너가 끝나지 않게 합니다.
     command:
       - bash
       - -c
@@ -50,16 +54,19 @@ services:
         && /apache-atlas/bin/atlas_start.py; tail -fF /apache-atlas/logs/application.log
     ports:
       - "${BIND_ADDRESS:-0.0.0.0}:${ATLAS_PORT:-21000}:21000"
+    # Atlas 데이터를 볼륨에 두어 컨테이너를 다시 만들어도 메타데이터가 남게 합니다.
     volumes:
       - atlas-data:/apache-atlas/data
     healthcheck:
-      # status answers before the models are loaded; ACTIVE means requests are accepted.
+      # status 엔드포인트는 모델을 다 불러오기 전에도 응답합니다. ACTIVE가 나와야 요청을 받을 수 있는 상태입니다.
+      # 첫 시작이 오래 걸리므로 start_period를 10분으로 넉넉히 둡니다.
       test: ["CMD-SHELL", "wget -qO- --user=admin --password=admin http://localhost:21000/api/atlas/admin/status | grep -q ACTIVE"]
       interval: 15s
       timeout: 10s
       start_period: 10m
       retries: 4
 
+  # 이 저장소에서 빌드하는 데모 애플리케이션입니다. Atlas가 ACTIVE가 되기 전에도 먼저 떠서 상태를 보여 줍니다.
   demo:
     build:
       context: ..

@@ -13,7 +13,7 @@
     <description>Easy-to-use Java client for Apache Atlas (type, entity, lineage, search management)</description>
 
     <modules>
-        <!-- No dependency on core, so every module's tests can use it. -->
+        <!-- core에 의존하지 않으므로 모든 모듈(core 포함)의 테스트에서 쓸 수 있습니다. -->
         <module>atlas-client-test</module>
         <module>atlas-client-core</module>
         <module>atlas-client-typedef</module>

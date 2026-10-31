@@ -17,6 +17,10 @@ import static io.datadynamics.atlas.client.http.AtlasTransport.POST;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+/**
+ * {@link AtlasLineage}의 리니지 등록과 조회를 가짜 Atlas 서버({@link FakeAtlasServer})로 검증합니다.
+ * 등록 요청 본문, 없는 엔티티 처리 정책, 컬럼 리니지, 영향 분석, soft-delete된 relationship 제거를 다룹니다.
+ */
 class AtlasLineageTest {
 
     private static final String BULK = "/api/atlas/v2/entity/bulk";
@@ -30,13 +34,17 @@ class AtlasLineageTest {
         server.close();
     }
 
-    /** Entities exist unless their qualified name contains "missing". */
+    /** 엔티티 조회 요청의 qualifiedName에 "missing"이 들어 있으면 404를, 아니면 엔티티가 있다고 응답하게 합니다. */
     private void entitiesExistExceptMissing(String typeName) {
         server.on(GET, "/api/atlas/v2/entity/uniqueAttribute/type/" + typeName, req -> req.rawQuery.contains("missing")
                 ? FakeAtlasServer.respond(404, "{\"errorCode\":\"ATLAS-404-00-009\"}")
                 : FakeAtlasServer.respond(200, "{\"entity\":{\"typeName\":\"" + typeName + "\",\"guid\":\"existing\"}}"));
     }
 
+    /**
+     * bulk 생성 요청을 받으면 보낸 엔티티의 임시 guid마다 {@code "real" + 임시 guid}를 실제 guid로 배정한
+     * guidAssignments를 응답하게 합니다.
+     */
     private void bulkEchoesGuidAssignments() {
         server.on(POST, BULK, req -> {
             JsonNode body = AtlasJson.fromJson(req.body, JsonNode.class);
@@ -50,10 +58,16 @@ class AtlasLineageTest {
         });
     }
 
+    /** 마지막 요청 본문의 {@code entities} 배열을 돌려줍니다. */
     private JsonNode sentEntities() {
         return AtlasJson.fromJson(server.lastRequest().body, JsonNode.class).get("entities");
     }
 
+    /**
+     * 참조한 테이블·컬럼이 모두 있는 상태에서 컬럼 리니지가 있는 프로세스를 등록합니다.
+     * 기대 결과: 프로세스와 컬럼 리니지 엔티티 두 개가 bulk 요청 한 번에 담기고, 컬럼 리니지의 {@code query}는
+     * 프로세스의 임시 guid를 가리키며, 응답의 guidAssignments로 실제 guid를 찾을 수 있습니다.
+     */
     @Test
     void registersProcessWithColumnLineageInOneCall() {
         entitiesExistExceptMissing("hive_table");
@@ -85,7 +99,7 @@ class AtlasLineageTest {
         assertThat(column.at("/attributes/qualifiedName").asText())
                 .isEqualTo("daily_sales_agg@prod:mart.daily_sales.amount@prod");
         assertThat(column.at("/attributes/inputs")).hasSize(2);
-        // The column lineage points at the process through its placeholder guid.
+        // 컬럼 리니지는 같은 요청 안의 프로세스를 임시 guid('-'로 시작)로 가리킵니다.
         assertThat(column.at("/attributes/query/guid").asText()).isEqualTo(process.get("guid").asText());
         assertThat(process.get("guid").asText()).startsWith("-");
 
@@ -93,6 +107,10 @@ class AtlasLineageTest {
         assertThat(result.createdEntities()).isEmpty();
     }
 
+    /**
+     * 기본 정책(FAIL)에서 입력·출력 중 일부가 없으면 {@link LineageException}이 나고 없는 엔티티가 순서대로
+     * 담기며, 존재 확인용 GET 외에는 아무 요청도 보내지 않는지 확인합니다.
+     */
     @Test
     void missingDatasetsFailBeforeAnythingIsSent() {
         entitiesExistExceptMissing("hive_table");
@@ -108,6 +126,10 @@ class AtlasLineageTest {
         assertThat(server.requests()).extracting(r -> r.method).containsOnly(GET);
     }
 
+    /**
+     * CREATE 정책에서 없는 입력을 지정한 속성과 함께 스텁으로 만들고, 프로세스가 그 스텁을 임시 guid로,
+     * 이미 있는 출력은 uniqueAttributes로 가리키는지 확인합니다.
+     */
     @Test
     void missingDatasetsCanBeCreated() {
         entitiesExistExceptMissing("s3_object");
@@ -131,6 +153,7 @@ class AtlasLineageTest {
                 .containsExactly("s3://bucket/missing.csv@prod");
     }
 
+    /** NO_CHECK 정책으로 프로세스 두 개를 등록하면 요청이 bulk 한 번뿐이고 엔티티 두 개가 담기는지 확인합니다. */
     @Test
     void severalProcessesInOneTransaction() {
         bulkEchoesGuidAssignments();
@@ -144,6 +167,7 @@ class AtlasLineageTest {
         assertThat(sentEntities()).hasSize(2);
     }
 
+    /** 입력도 출력도 없는 프로세스를 등록하면 요청 전에 {@link IllegalStateException}이 나는지 확인합니다. */
     @Test
     void processWithoutDatasetsIsRejected() {
         assertThatThrownBy(() -> lineage.process("etl_job", "empty@prod").register())
@@ -151,6 +175,10 @@ class AtlasLineageTest {
                 .hasMessageContaining("neither inputs nor outputs");
     }
 
+    /**
+     * 컬럼 리니지 타입과 이름 규칙을 바꾸고 부모 속성을 {@code null}로 두면, 지정한 타입·이름·추가 속성이 쓰이고
+     * {@code query} 속성은 들어가지 않는지 확인합니다.
+     */
     @Test
     void customColumnLineageType() {
         bulkEchoesGuidAssignments();
@@ -171,6 +199,13 @@ class AtlasLineageTest {
         assertThat(column.at("/attributes").has("query")).isFalse();
     }
 
+    /**
+     * 기본 생성자로 만든 {@link AtlasLineage}의 영향 분석을 검증합니다.
+     * 준비: 기준 엔티티를 {@code sales}로 바꾼 리니지 응답과, {@code etl_job → my_base_process → Process} 상속 관계의
+     * 타입 정의를 등록합니다.
+     * 기대 결과: OUTPUT 방향과 지정한 depth로 리니지를 요청하고, 거리와 함께 영향 데이터셋을 돌려주며,
+     * {@code etl_job} 타입 정의는 캐시 덕분에 한 번만 조회합니다.
+     */
     @Test
     void impactUsesOutputLineageAndResolvesProcessTypes() {
         server.on(GET, "/api/atlas/v2/lineage/uniqueAttribute/type/hive_table", req -> FakeAtlasServer.respond(200,
@@ -198,9 +233,16 @@ class AtlasLineageTest {
         assertThat(etlJobLookups).as("type resolution is cached").isEqualTo(1);
     }
 
+    /**
+     * soft-delete된 relationship이 기본적으로 그래프에서 빠지는지 확인합니다.
+     * 준비: {@code customer → p_agg} 관계에 relationshipId {@code rel-old}를 붙이고, 프로세스 bulk 조회 응답에서
+     * 그 relationship을 DELETED로 표시합니다.
+     * 기대 결과: 기본 설정에서는 {@code customer}가 그래프에서 사라지고, bulk 조회는 프로세스 guid만 minExtInfo로
+     * 요청합니다. {@code includeDeletedRelationships(true)}이면 {@code customer}가 남습니다.
+     */
     @Test
     void softDeletedRelationshipsAreRemovedFromGraphs() {
-        // p_agg used to read "customer"; that relationship (rel-old) was soft-deleted on re-registration.
+        // p_agg는 원래 "customer"를 읽었지만, 다시 등록하면서 그 relationship(rel-old)이 soft-delete되었습니다.
         String lineageJson = LineageFixtures.LINEAGE
                 .replace("{\"fromEntityId\":\"customer\",\"toEntityId\":\"p_agg\"}",
                         "{\"fromEntityId\":\"customer\",\"toEntityId\":\"p_agg\",\"relationshipId\":\"rel-old\"}");
@@ -224,6 +266,10 @@ class AtlasLineageTest {
         assertThat(history.upstreamDatasets(history.base())).extracting(n -> n.guid()).contains("customer");
     }
 
+    /**
+     * 리니지가 없어 응답의 guidEntityMap이 빈 엔티티를 조회하면, 요청한 typeName과 qualifiedName으로 기준 노드를
+     * 채우는지 확인합니다.
+     */
     @Test
     void graphOfEntityWithoutLineage() {
         server.on(GET, "/api/atlas/v2/lineage/uniqueAttribute/type/hive_table", 200,

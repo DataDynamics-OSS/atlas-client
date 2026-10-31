@@ -39,7 +39,7 @@
     </div>
 </div>
 
-<!-- The client requests made while handling this page: the point of the demo. -->
+<!-- 이 페이지를 처리하는 동안 클라이언트가 Atlas에 보낸 요청 목록입니다. 데모에서 가장 보여 주고 싶은 부분입니다. -->
 <section th:fragment="trace" class="trace" th:if="${trace != null}">
     <h3>이 화면에서 클라이언트가 보낸 요청 <span class="muted" th:text="'(' + ${#lists.size(trace)} + ')'"></span></h3>
     <p class="muted small" th:if="${#lists.isEmpty(trace)}">Atlas REST 요청 없음</p>

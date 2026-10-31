@@ -34,18 +34,27 @@ import static io.datadynamics.atlas.client.typedef.TypeDefs.entity;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Hook messages and change notifications through the Kafka a real Atlas uses.
- * Atlas applies hook messages asynchronously, so every check polls until the change shows up.
+ * 실제 Atlas가 쓰는 Kafka를 통해 hook 메시지 발행과 변경 알림 수신을 검증합니다.
+ * <p>
+ * Atlas는 hook 메시지를 비동기로 처리하므로, 모든 확인은 변경이 보일 때까지 반복 조회하며 기다립니다.
+ * 테스트 서버의 Kafka 주소를 모르면 클래스 전체를 건너뜁니다.
  */
 class KafkaIT extends AtlasIT {
 
+    /** hook 메시지가 반영되거나 알림이 도착하기를 기다리는 최대 시간입니다. */
     private static final Duration TIMEOUT = Duration.ofSeconds(90);
 
     private static String bootstrapServers;
+    /** 테스트용 타입 이름입니다. */
     private static String table;
     private static String job;
+    /** 클래스 전체에서 공유하는 hook 발행기입니다. */
     private static AtlasHookPublisher hook;
 
+    /**
+     * Kafka 주소를 확인하고(없으면 건너뜀), rowCount 속성을 가진 데이터셋 타입과 프로세스 타입을 만든 뒤,
+     * 사용자 {@code it}로 메시지를 보내는 hook 발행기를 만듭니다.
+     */
     @BeforeAll
     static void setUp() {
         bootstrapServers = AtlasTestServer.shared().kafkaBootstrapServers().orElse(null);
@@ -59,6 +68,7 @@ class KafkaIT extends AtlasIT {
         hook = AtlasHookPublisher.builder().bootstrapServers(bootstrapServers).user("it").build();
     }
 
+    /** hook 발행기를 닫습니다. 테스트를 건너뛰어 만들지 않았으면 아무것도 하지 않습니다. */
     @AfterAll
     static void closeHook() {
         if (hook != null) {
@@ -66,10 +76,15 @@ class KafkaIT extends AtlasIT {
         }
     }
 
+    /** qualifiedName과 name이 같은 테스트 테이블 엔티티를 만듭니다. */
     private static AtlasEntity table(String qualifiedName) {
         return new AtlasEntity(table, Map.of("qualifiedName", qualifiedName, "name", qualifiedName));
     }
 
+    /**
+     * hook으로 보낸 엔티티가 Atlas에 생길 때까지 기다린 뒤 guid를 돌려주고, 정리 대상으로 등록합니다.
+     * 제한 시간 안에 생기지 않으면 테스트가 실패합니다.
+     */
     private static String awaitGuid(String typeName, String qualifiedName) {
         Optional<String> guid = awaitValue(() -> atlas.entities().findGuid(typeName, qualifiedName),
                 Optional::isPresent, TIMEOUT);
@@ -78,6 +93,10 @@ class KafkaIT extends AtlasIT {
         return guid.get();
     }
 
+    /**
+     * hook으로 생성, qualifiedName 기반 부분 수정, 삭제를 차례로 보냅니다. 메시지는 ATLAS_HOOK 토픽으로 가야 하고,
+     * 각 단계가 Atlas에 반영되어야 합니다. 부분 수정 후에도 건드리지 않은 name은 그대로여야 합니다.
+     */
     @Test
     void createPartialUpdateAndDeleteThroughTheHook() {
         String qualifiedName = name("orders@kafka");
@@ -99,8 +118,14 @@ class KafkaIT extends AtlasIT {
         assertThat(status).isEqualTo(EntityStatus.DELETED);
     }
 
+    /**
+     * 최대 메시지 크기를 2000바이트로 줄인 발행기로 큰 메시지(설명 400자짜리 엔티티 20개)를 보내면, 압축을 켠 경우와
+     * 끈 경우 모두 여러 조각으로 나뉘어야 합니다. Atlas가 조각을 다시 합쳐 첫 엔티티와 마지막 엔티티를 모두
+     * 만들어야 합니다.
+     */
     @Test
     void largeMessagesAreSplitAndReassembledByAtlas() {
+        // 압축해도 크기가 충분히 크게 남도록 무작위 문자열을 쓰며, 실행마다 같은 결과가 나오도록 시드를 고정합니다.
         Random random = new Random(7);
         for (boolean compression : List.of(true, false)) {
             List<AtlasEntity> entities = new ArrayList<>();
@@ -120,6 +145,10 @@ class KafkaIT extends AtlasIT {
         }
     }
 
+    /**
+     * {@link AtlasLineage}로 만든 프로세스와 데이터셋 엔티티를 REST 대신 hook으로 보내도 리니지가 등록되어야 하고,
+     * 원천 데이터셋의 영향도에 대상 데이터셋이 나와야 합니다.
+     */
     @Test
     void lineageCanBeSentThroughTheHook() {
         String source = name("src@kafka");
@@ -137,6 +166,10 @@ class KafkaIT extends AtlasIT {
         assertThat(impact).extracting(i -> i.dataset().qualifiedName()).containsExactly(target);
     }
 
+    /**
+     * 변경 알림 listener가 생성, 수정, 삭제 이벤트를 순서대로 받아야 합니다. qualifiedName 필터로 이 테스트의
+     * 엔티티 이벤트만 모으며, 첫 이벤트는 생성한 엔티티의 guid와 시간을 담고 있어야 하고 처리 실패가 없어야 합니다.
+     */
     @Test
     void listenerReceivesChangeEvents() {
         String qualifiedName = name("evt@kafka");
@@ -153,9 +186,9 @@ class KafkaIT extends AtlasIT {
 
             String guid = atlas.entities().createOrUpdate(table(qualifiedName)).firstGuid().orElseThrow();
             cleanupEntity(guid);
-            // Atlas 2.3 publishes no notification for partial updates...
+            // Atlas 2.3은 부분 수정에 대해서는 알림을 발행하지 않고...
             atlas.entities().updateAttribute(guid, "rowCount", 9L);
-            // ...only for full updates.
+            // ...전체 수정에 대해서만 발행합니다. 그래서 수정 이벤트는 하나만 와야 합니다.
             AtlasEntity full = table(qualifiedName);
             full.setAttribute("rowCount", 10L);
             atlas.entities().createOrUpdate(full);

@@ -11,14 +11,14 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * The Atlas server integration tests run against, shared by every test in the JVM.
+ * 통합 테스트가 접속할 Atlas 서버입니다. JVM 안의 모든 테스트가 하나를 공유합니다.
  * <p>
- * If the {@code atlas.url} system property is set, that server is used
- * ({@code atlas.username}/{@code atlas.password}, default {@code admin}/{@code admin}, and
- * {@code atlas.kafka.bootstrap.servers} for the Kafka it uses, if any); this is the quickest way to
- * run integration tests against a development Atlas.
- * Otherwise a Kafka container ({@value #DEFAULT_KAFKA_IMAGE}, override with {@code kafka.image})
- * and an {@link AtlasContainer} using it are started on first use and stopped when the JVM exits.
+ * {@code atlas.url} 시스템 속성이 있으면 그 서버를 씁니다. 계정은 {@code atlas.username}/{@code atlas.password}
+ * (기본값 {@code admin}/{@code admin})이고, 그 서버가 쓰는 Kafka가 있으면 {@code atlas.kafka.bootstrap.servers}로
+ * 지정합니다. 개발용 Atlas에 통합 테스트를 돌리는 가장 빠른 방법입니다.
+ * <p>
+ * 속성이 없으면 처음 사용할 때 Kafka 컨테이너({@value #DEFAULT_KAFKA_IMAGE}, {@code kafka.image}로 변경 가능)와
+ * 그 Kafka를 쓰는 {@link AtlasContainer}를 같은 Docker 네트워크에 띄우고, JVM이 끝날 때 shutdown hook으로 멈춥니다.
  * <pre>{@code
  * AtlasTestServer atlas = AtlasTestServer.shared();
  * AtlasClient client = AtlasClient.builder()
@@ -29,10 +29,13 @@ import java.util.Optional;
  */
 public final class AtlasTestServer {
 
+    /** 기본 Kafka Docker 이미지입니다. */
     public static final String DEFAULT_KAFKA_IMAGE = "apache/kafka:3.9.1";
 
     private static final Logger LOG = LoggerFactory.getLogger(AtlasTestServer.class);
+    /** Docker 네트워크 안에서 Atlas 컨테이너가 Kafka에 접속할 때 쓰는 주소입니다. */
     private static final String KAFKA_ALIAS = "kafka:19092";
+    /** 지연 생성되는 공유 인스턴스입니다. double-checked locking을 위해 {@code volatile}입니다. */
     private static volatile AtlasTestServer shared;
 
     private final String url;
@@ -47,6 +50,12 @@ public final class AtlasTestServer {
         this.kafkaBootstrapServers = kafkaBootstrapServers;
     }
 
+    /**
+     * 공유 서버를 돌려줍니다. 처음 호출할 때만 서버를 준비하며(컨테이너를 쓰면 몇 분이 걸립니다), 이후 호출은
+     * 같은 인스턴스를 바로 돌려줍니다. 여러 스레드에서 동시에 호출해도 서버는 한 번만 만들어집니다.
+     *
+     * @return 공유 {@link AtlasTestServer}
+     */
     public static AtlasTestServer shared() {
         AtlasTestServer server = shared;
         if (server != null) {
@@ -60,6 +69,10 @@ public final class AtlasTestServer {
         }
     }
 
+    /**
+     * 외부 서버 설정이 있으면 그것을 쓰고, 없으면 Kafka와 Atlas 컨테이너를 차례로 띄웁니다.
+     * Atlas가 시작할 때 Kafka에 접속해야 하므로 Kafka를 먼저 시작합니다.
+     */
     private static AtlasTestServer create() {
         String externalUrl = System.getProperty("atlas.url");
         if (externalUrl != null && !externalUrl.isBlank()) {
@@ -89,21 +102,37 @@ public final class AtlasTestServer {
                 kafka.getBootstrapServers());
     }
 
+    /**
+     * Atlas REST API의 기본 URL을 돌려줍니다.
+     *
+     * @return 서버 URL
+     */
     public String url() {
         return url;
     }
 
+    /**
+     * Basic 인증에 쓸 사용자 이름을 돌려줍니다.
+     *
+     * @return 사용자 이름
+     */
     public String username() {
         return username;
     }
 
+    /**
+     * Basic 인증에 쓸 비밀번호를 돌려줍니다.
+     *
+     * @return 비밀번호
+     */
     public String password() {
         return password;
     }
 
     /**
-     * Kafka the Atlas server uses for {@code ATLAS_HOOK} and {@code ATLAS_ENTITIES}, reachable from
-     * the tests; empty for an external Atlas without {@code atlas.kafka.bootstrap.servers}.
+     * Atlas 서버가 {@code ATLAS_HOOK}과 {@code ATLAS_ENTITIES}에 쓰는 Kafka의, 테스트에서 접속할 수 있는 주소를 돌려줍니다.
+     *
+     * @return Kafka bootstrap 주소. {@code atlas.kafka.bootstrap.servers} 없이 외부 Atlas를 쓰면 비어 있습니다
      */
     public Optional<String> kafkaBootstrapServers() {
         return Optional.ofNullable(kafkaBootstrapServers);

@@ -8,11 +8,15 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Definition of one attribute of a struct, entity, classification or business metadata type.
+ * struct, 엔티티, classification, business metadata 타입이 가지는 속성 하나의 정의입니다.
+ * <p>
+ * 최소한 이름({@code name})과 속성의 타입 이름({@code typeName}, 예: {@code string}, {@code int},
+ * {@code array<string>})이 있어야 합니다. 나머지 값은 설정하지 않으면 {@code null}로 남고 JSON에서 생략되므로
+ * Atlas의 기본값이 적용됩니다.
  */
 public class AtlasAttributeDef extends AtlasModel {
 
-    /** Index type hint used by Atlas for string attributes. */
+    /** 문자열 속성을 인덱싱할 때 Atlas가 참고하는 인덱스 종류 힌트입니다. */
     public enum IndexType {
         DEFAULT,
         STRING
@@ -38,9 +42,16 @@ public class AtlasAttributeDef extends AtlasModel {
     private List<AtlasConstraintDef> constraints;
     private Map<String, String> options;
 
+    /** 빈 속성 정의를 만듭니다. 주로 JSON 역직렬화에서 사용합니다. */
     public AtlasAttributeDef() {
     }
 
+    /**
+     * 이름과 타입을 지정해 속성 정의를 만듭니다.
+     *
+     * @param name     속성 이름
+     * @param typeName 속성 값의 타입 이름(예: {@code string}, {@code array<string>})
+     */
     public AtlasAttributeDef(String name, String typeName) {
         this.name = name;
         this.typeName = typeName;
@@ -62,6 +73,7 @@ public class AtlasAttributeDef extends AtlasModel {
         this.typeName = typeName;
     }
 
+    /** 값을 생략해도 되는 속성인지 돌려줍니다. JSON 속성 이름은 {@code isOptional}입니다. */
     public Boolean getOptional() {
         return optional;
     }
@@ -78,6 +90,7 @@ public class AtlasAttributeDef extends AtlasModel {
         this.cardinality = cardinality;
     }
 
+    /** 값이 여러 개인 속성(LIST/SET)에서 최소 값 개수를 돌려줍니다. */
     public Integer getValuesMinCount() {
         return valuesMinCount;
     }
@@ -86,6 +99,7 @@ public class AtlasAttributeDef extends AtlasModel {
         this.valuesMinCount = valuesMinCount;
     }
 
+    /** 값이 여러 개인 속성(LIST/SET)에서 최대 값 개수를 돌려줍니다. */
     public Integer getValuesMaxCount() {
         return valuesMaxCount;
     }
@@ -94,6 +108,7 @@ public class AtlasAttributeDef extends AtlasModel {
         this.valuesMaxCount = valuesMaxCount;
     }
 
+    /** 값이 같은 타입의 엔티티들 사이에서 유일해야 하는지 돌려줍니다. JSON 속성 이름은 {@code isUnique}입니다. */
     public Boolean getUnique() {
         return unique;
     }
@@ -102,6 +117,7 @@ public class AtlasAttributeDef extends AtlasModel {
         this.unique = unique;
     }
 
+    /** 검색 인덱스를 만들 속성인지 돌려줍니다. JSON 속성 이름은 {@code isIndexable}입니다. */
     public Boolean getIndexable() {
         return indexable;
     }
@@ -110,6 +126,7 @@ public class AtlasAttributeDef extends AtlasModel {
         this.indexable = indexable;
     }
 
+    /** 엔티티 변경 알림 메시지에 이 속성 값을 포함할지 돌려줍니다. */
     public Boolean getIncludeInNotification() {
         return includeInNotification;
     }
@@ -134,6 +151,7 @@ public class AtlasAttributeDef extends AtlasModel {
         this.description = description;
     }
 
+    /** 검색 결과 순위를 매길 때 이 속성에 주는 가중치를 돌려줍니다. */
     public Integer getSearchWeight() {
         return searchWeight;
     }
@@ -166,6 +184,11 @@ public class AtlasAttributeDef extends AtlasModel {
         this.constraints = constraints;
     }
 
+    /**
+     * 제약 조건을 하나 추가합니다. 목록이 없으면 새로 만듭니다.
+     *
+     * @param constraint 추가할 제약 조건
+     */
     public void addConstraint(AtlasConstraintDef constraint) {
         if (constraints == null) {
             constraints = new ArrayList<>();
@@ -173,6 +196,10 @@ public class AtlasAttributeDef extends AtlasModel {
         constraints.add(constraint);
     }
 
+    /**
+     * 속성 수준 옵션을 돌려줍니다. 예를 들어 business metadata 속성은
+     * {@link AtlasBusinessMetadataDef#OPT_APPLICABLE_ENTITY_TYPES} 옵션을 여기에 담습니다.
+     */
     public Map<String, String> getOptions() {
         return options;
     }

@@ -49,7 +49,7 @@
 
     <build>
         <plugins>
-            <!-- Executable jar with all dependencies: java -jar atlas-client-cli-<version>-all.jar -->
+            <!-- 모든 의존성을 포함한 실행 가능한 jar를 만듭니다: java -jar atlas-client-cli-<version>-all.jar -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>

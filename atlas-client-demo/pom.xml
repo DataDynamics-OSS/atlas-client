@@ -16,8 +16,8 @@
 
     <properties>
         <spring-boot.version>4.0.9</spring-boot.version>
-        <!-- Spring Boot's Jackson 3 shares jackson-annotations with Jackson 2 and needs 2.21: use the
-             Jackson 2 version Spring Boot manages instead of the parent's. -->
+        <!-- Spring Boot의 Jackson 3는 jackson-annotations를 Jackson 2와 함께 쓰며 2.21 버전이 필요합니다.
+             그래서 부모 POM의 버전 대신 Spring Boot가 관리하는 Jackson 2 버전을 씁니다. -->
         <jackson.version>2.21.7</jackson.version>
         <mermaid.version>11.17.2</mermaid.version>
         <monaco-editor.version>0.55.1</monaco-editor.version>
@@ -52,7 +52,7 @@
             <groupId>io.datadynamics.atlas</groupId>
             <artifactId>atlas-client-kafka</artifactId>
         </dependency>
-        <!-- ConsistencyChecker and EntityFiles -->
+        <!-- ConsistencyChecker와 EntityFiles를 쓰기 위한 의존성입니다. -->
         <dependency>
             <groupId>io.datadynamics.atlas</groupId>
             <artifactId>atlas-client-cli</artifactId>
@@ -80,12 +80,12 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
-        <!-- Version-less /webjars/ paths -->
+        <!-- 템플릿에서 버전 번호 없는 /webjars/ 경로를 쓸 수 있게 합니다. -->
         <dependency>
             <groupId>org.webjars</groupId>
             <artifactId>webjars-locator-lite</artifactId>
         </dependency>
-        <!-- Only the bundled dist is used; the npm dependencies of mermaid are not needed. -->
+        <!-- 번들된 dist 파일만 쓰므로 mermaid의 npm 의존성은 필요하지 않습니다. -->
         <dependency>
             <groupId>org.webjars.npm</groupId>
             <artifactId>mermaid</artifactId>
@@ -97,7 +97,7 @@
                 </exclusion>
             </exclusions>
         </dependency>
-        <!-- Code viewer and editor (min/vs AMD build); its npm dependencies are bundled. -->
+        <!-- 코드 보기와 편집기(min/vs AMD 빌드)입니다. npm 의존성은 번들에 포함되어 있습니다. -->
         <dependency>
             <groupId>org.webjars.npm</groupId>
             <artifactId>monaco-editor</artifactId>
@@ -126,7 +126,7 @@
         <finalName>atlas-client-demo</finalName>
         <plugins>
             <plugin>
-                <!-- Spring binds request parameters by method parameter name. -->
+                <!-- Spring은 요청 파라미터를 메서드 파라미터 이름으로 바인딩하므로, 컴파일할 때 파라미터 이름을 남겨야 합니다. -->
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>

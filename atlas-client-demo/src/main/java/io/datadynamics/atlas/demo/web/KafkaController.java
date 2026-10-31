@@ -19,10 +19,17 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.util.List;
 import java.util.Map;
 
-/** ATLAS_HOOK publishing and ATLAS_ENTITIES events (atlas-client-kafka). */
+/**
+ * atlas-client-kafka 모듈 데모 페이지입니다. {@code ATLAS_HOOK} 토픽으로 hook 메시지를 보내고,
+ * {@code ATLAS_ENTITIES} 토픽의 엔티티 변경 이벤트를 보여 줍니다.
+ * <p>
+ * Kafka가 설정되지 않으면 {@link AtlasHookPublisher}와 {@link EntityEventHub} 빈이 없으므로
+ * {@link ObjectProvider}로 있을 때만 꺼내 씁니다.
+ */
 @Controller
 class KafkaController {
 
+    /** 생성 폼에 미리 채워 두는 예제 엔티티(YAML)입니다. */
     static final String SAMPLE_ENTITIES = """
             - typeName: DataSet
               attributes:
@@ -39,6 +46,7 @@ class KafkaController {
         this.events = events;
     }
 
+    /** {@code GET /kafka}: 예제 값을 채운 발행 폼과 최근 엔티티 이벤트를 보여 줍니다. */
     @GetMapping("/kafka")
     String page(Model model) {
         model.addAttribute("entities", SAMPLE_ENTITIES);
@@ -49,7 +57,20 @@ class KafkaController {
     }
 
     /**
-     * @param op create (entities as YAML/JSON), partial (attributes as JSON) or delete
+     * {@code POST /kafka/publish}: 입력한 내용을 hook 메시지로 {@code ATLAS_HOOK}에 보냅니다.
+     * <p>
+     * 입력 값은 결과와 함께 폼에 다시 채워 보여 줍니다. Kafka가 설정되지 않았으면
+     * {@link IllegalArgumentException}이 나서 오류 페이지(400)로 갑니다. 입력을 해석하지 못했거나
+     * {@code op}를 모르거나 발행이 실패하면 같은 페이지에 실패 내용을 보여 줍니다.
+     *
+     * @param op            {@code create}(엔티티를 YAML/JSON으로 입력), {@code partial}(속성을 JSON으로 입력)
+     *                      또는 {@code delete}
+     * @param entities      {@code create}일 때 보낼 엔티티 목록
+     * @param typeName      {@code partial}/{@code delete} 대상 엔티티의 typeName
+     * @param qualifiedName {@code partial}/{@code delete} 대상 엔티티의 qualifiedName
+     * @param attributes    {@code partial}일 때 바꿀 속성(JSON 객체)
+     * @param model         뷰 모델
+     * @return 뷰 이름 {@code kafka}
      */
     @PostMapping("/kafka/publish")
     String publish(@RequestParam String op, @RequestParam(required = false) String entities,
@@ -80,6 +101,7 @@ class KafkaController {
         return show(model);
     }
 
+    /** 이벤트 허브 상태와 최근 이벤트를 모델에 넣고 {@code kafka} 뷰를 고릅니다. 허브가 없으면 빈 목록을 넣습니다. */
     private String show(Model model) {
         EntityEventHub hub = events.getIfAvailable();
         model.addAttribute("hub", hub);
@@ -87,6 +109,11 @@ class KafkaController {
         return "kafka";
     }
 
+    /**
+     * {@code GET /events/stream}: 새 엔티티 이벤트를 받는 SSE 스트림을 엽니다. 페이지의 스크립트가 구독합니다.
+     *
+     * @throws IllegalArgumentException Kafka가 설정되지 않은 경우
+     */
     @GetMapping("/events/stream")
     @ResponseBody
     SseEmitter stream() {
