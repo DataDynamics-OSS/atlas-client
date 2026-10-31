@@ -50,9 +50,13 @@ public abstract class HookMessage extends AtlasModel {
     /** Atlas resolves partial updates and deletes by type name and unique attributes, not by guid. */
     static void requireUniqueAttributes(AtlasObjectId id, String what) {
         if (id == null || id.getTypeName() == null || id.getUniqueAttributes() == null
-                || id.getUniqueAttributes().isEmpty()) {
+                || id.getUniqueAttributes().values().stream().allMatch(HookMessage::isBlank)) {
             throw new IllegalArgumentException(what + " needs a typeName and uniqueAttributes "
                     + "(Atlas looks entities of hook messages up by unique attributes): " + id);
         }
+    }
+
+    private static boolean isBlank(Object value) {
+        return value == null || value.toString().isBlank();
     }
 }

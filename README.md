@@ -65,6 +65,7 @@ atlas.search().basicStream(params).forEach(h -> System.out.println(h.qualifiedNa
 - **조회 메서드**: `find*`는 대상이 없으면 `Optional.empty()`를 돌려주고, `get*`은 예외를 던집니다.
 - **재시도**: 연결 실패와 503(Passive 서버)은 항상 재시도합니다. 502/504와 읽기 타임아웃은 멱등 메서드(GET/PUT/DELETE)만 재시도합니다.
 - **호환성**: 클라이언트가 모르는 JSON 필드도 보존합니다. 조회한 typedef를 수정해서 다시 보내도 필드가 사라지지 않습니다.
+- **요청 관찰**: `AtlasClient.builder().requestListener(e -> ...)`로 HTTP 시도마다 메서드, URI, 시도 횟수, 상태 코드, 소요 시간, 요청·응답 본문을 받습니다. 로깅이나 메트릭에 씁니다. 리스너에서 난 예외는 로그만 남기고 무시합니다.
 
 ## 타입 관리 (atlas-client-typedef)
 
@@ -185,7 +186,7 @@ AtlasEntityChangeListener listener = AtlasEntityChangeListener.builder()
 ```
 
 - **메시지 형식**: Atlas와 같은 envelope을 씁니다. 1MB(`atlas.notification.message.max.length.bytes` 기본값)를 넘는 메시지는 GZIP으로 압축하고, 그래도 크면 여러 Kafka 메시지로 나눕니다. 나눈 조각은 같은 key로 보내 같은 파티션에 순서대로 들어갑니다. 리스너도 압축·분할된 메시지를 다시 조립합니다.
-- **검증**: Atlas는 hook 메시지를 처리하다 실패해도 서버 로그에만 남깁니다. 그래서 partial update와 delete에 typeName과 uniqueAttributes가 있는지 같은 조건을 보내기 전에 검사합니다. Atlas는 이 두 메시지의 엔티티를 unique attribute로 찾습니다.
+- **검증**: Atlas는 hook 메시지를 처리하다 실패해도 서버 로그에만 남깁니다. 그래서 partial update와 delete에 typeName과 비어 있지 않은 uniqueAttributes가 있는지 같은 조건을 보내기 전에 검사합니다. Atlas는 이 두 메시지의 엔티티를 unique attribute로 찾습니다.
 - **비동기**: `createOrUpdate` 등은 Kafka가 메시지를 받았을 때 반환합니다. Atlas에 반영되는 것은 그 뒤입니다. `sendAsync`는 기다리지 않습니다.
 - **ENTITY_UPDATE 이벤트**: Atlas 2.3은 전체 수정(`POST /v2/entity`, `/bulk`)일 때만 `ENTITY_UPDATE`를 발행합니다. 부분 수정(`PUT .../guid/{guid}?name=`, `PUT .../uniqueAttribute/...`)은 이벤트 없이 반영됩니다.
 
@@ -222,6 +223,7 @@ atlas events tail --bootstrap-servers kafka:9092 --type hive_table --qualified-n
   | `typeName`, `classifications`, `labels` | 행별 타입, classification, 레이블 |
 
   숫자나 boolean도 문자열로 적으면 Atlas가 속성 타입에 맞게 변환합니다. 같은 파일 안의 엔티티를 참조해도 됩니다. Atlas는 같은 요청 안에 있는 엔티티를 qualifiedName 참조로 찾지 못하므로(`ATLAS-404-00-00A`), 같은 배치 안의 참조는 CLI가 placeholder guid로 바꿉니다. 배치가 다르면 참조되는 엔티티가 파일에서 먼저 나와야 합니다. YAML/JSON은 엔티티 목록이나 `{entities: [...]}` 형식을 받습니다.
+- **파일 읽기 API**: `EntityFiles.parse(fileName, text, defaultType)`와 `EntityFiles.linkWithinBatch(batch)`로 애플리케이션에서도 `entities import`와 같은 형식을 읽을 수 있습니다.
 - **check**: process 중 inputs와 outputs가 모두 없는 것, 한쪽이 없는 것(삭제된 데이터셋 때문인 경우 포함), 삭제된 엔티티를 가리키는 활성 edge, qualifiedName 중복을 찾습니다. 검색 인덱스를 쓰므로 방금 만든 엔티티는 잠시 뒤에 잡힐 수 있습니다.
 - **종료 코드**: 0 성공, 1 실패·문제 발견·확인 거부, 2 잘못된 명령. `ATLAS_CLI_DEBUG=1`이면 stack trace도 출력합니다.
 

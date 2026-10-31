@@ -116,6 +116,7 @@ public final class AtlasTransport {
                 response = httpClient.send(buildRequest(method, uri, jsonBody),
                         HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
             } catch (IOException e) {
+                notifyListener(method, uri, attempt, -1, started, jsonBody, null, e);
                 boolean notSent = isConnectFailure(e);
                 serverSelector.markFailed(server);
                 if (attempt < retryPolicy.getMaxAttempts()
@@ -129,8 +130,10 @@ public final class AtlasTransport {
                 throw new AtlasConnectionException(method + " " + uri + " failed: " + reason, e);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
+                notifyListener(method, uri, attempt, -1, started, jsonBody, null, e);
                 throw new AtlasConnectionException(method + " " + uri + " interrupted", e);
             }
+            notifyListener(method, uri, attempt, response.statusCode(), started, jsonBody, response.body(), null);
 
             int status = response.statusCode();
             long elapsedMillis = Duration.ofNanos(System.nanoTime() - started).toMillis();
@@ -161,6 +164,16 @@ public final class AtlasTransport {
                 continue;
             }
             throw toServerException(method, uri, response);
+        }
+    }
+
+    private void notifyListener(String method, URI uri, int attempt, int status, long startedNanos,
+                                String requestBody, String responseBody, Throwable failure) {
+        try {
+            config.getRequestListener().onExchange(new RequestListener.Exchange(method, uri, attempt, status,
+                    Duration.ofNanos(System.nanoTime() - startedNanos), requestBody, responseBody, failure));
+        } catch (RuntimeException e) {
+            LOG.warn("Request listener failed for {} {}", method, uri, e);
         }
     }
 

@@ -85,6 +85,10 @@ class AtlasHookPublisherTest {
 
         assertThatThrownBy(() -> publisher.delete(AtlasObjectId.byGuid("g-1")))
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("uniqueAttributes");
+        assertThatThrownBy(() -> publisher.deleteByQualifiedName("hive_table", " "))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("uniqueAttributes");
+        assertThatThrownBy(() -> publisher.partialUpdateByQualifiedName("hive_table", "", new AtlasEntity()))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("uniqueAttributes");
         assertThatThrownBy(() -> publisher.createOrUpdate(List.of()))
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("at least one entity");
         assertThatThrownBy(() -> publisher.createOrUpdate(new AtlasEntity()))

@@ -12,12 +12,15 @@ import org.junit.jupiter.api.Test;
 
 import java.net.ServerSocket;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import static io.datadynamics.atlas.client.http.AtlasTransport.GET;
 import static io.datadynamics.atlas.client.http.AtlasTransport.POST;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 
 class AtlasTransportTest {
 
@@ -185,5 +188,67 @@ class AtlasTransportTest {
                 null);
 
         assertThat(server.lastRequest().rawQuery).isEqualTo("attr%3AqualifiedName=db.t%20one%40c");
+    }
+
+    @Test
+    void requestListenerSeesEveryAttempt() {
+        server.on(GET, "/api/atlas/x", 503, "")
+                .on(GET, "/api/atlas/x", 200, "{\"ok\":true}");
+        List<RequestListener.Exchange> exchanges = new CopyOnWriteArrayList<>();
+        AtlasTransport transport = AtlasClient.builder()
+                .serverUrl(server.url())
+                .retryPolicy(FAST_RETRY)
+                .requestListener(exchanges::add)
+                .build()
+                .transport();
+
+        transport.execute(GET, "/api/atlas/x", QueryParams.create().add("q", "1"), null);
+
+        assertThat(exchanges).extracting(RequestListener.Exchange::attempt, RequestListener.Exchange::statusCode)
+                .containsExactly(tuple(1, 503), tuple(2, 200));
+        RequestListener.Exchange last = exchanges.get(1);
+        assertThat(last.method()).isEqualTo(GET);
+        assertThat(last.uri().toString()).isEqualTo(server.url() + "/api/atlas/x?q=1");
+        assertThat(last.responseBody()).contains("ok");
+        assertThat(last.isSuccess()).isTrue();
+        assertThat(last.failure()).isNull();
+    }
+
+    @Test
+    void requestListenerSeesConnectionFailures() throws Exception {
+        int freePort;
+        try (ServerSocket socket = new ServerSocket(0)) {
+            freePort = socket.getLocalPort();
+        }
+        List<RequestListener.Exchange> exchanges = new CopyOnWriteArrayList<>();
+        AtlasTransport transport = AtlasClient.builder()
+                .serverUrl("http://127.0.0.1:" + freePort)
+                .retryPolicy(FAST_RETRY)
+                .requestListener(exchanges::add)
+                .build()
+                .transport();
+
+        assertThatThrownBy(() -> transport.execute(POST, "/api/atlas/x", null, "{}"))
+                .isInstanceOf(AtlasConnectionException.class);
+
+        assertThat(exchanges).hasSize(3).allSatisfy(e -> {
+            assertThat(e.statusCode()).isEqualTo(-1);
+            assertThat(e.failure()).isNotNull();
+            assertThat(e.requestBody()).isEqualTo("{}");
+        });
+    }
+
+    @Test
+    void failingRequestListenerDoesNotBreakRequests() {
+        server.on(GET, "/api/atlas/x", 200, "{}");
+        AtlasTransport transport = AtlasClient.builder()
+                .serverUrl(server.url())
+                .requestListener(e -> {
+                    throw new IllegalStateException("boom");
+                })
+                .build()
+                .transport();
+
+        assertThat(transport.execute(GET, "/api/atlas/x", null, null)).isEqualTo("{}");
     }
 }

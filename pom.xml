@@ -6,7 +6,7 @@
 
     <groupId>io.datadynamics.atlas</groupId>
     <artifactId>atlas-client-parent</artifactId>
-    <version>0.1.0</version>
+    <version>0.2.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>Atlas Client :: Parent</name>
@@ -131,6 +131,21 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <profiles>
+        <!-- Optional web console module; built only where its directory exists. -->
+        <profile>
+            <id>console</id>
+            <activation>
+                <file>
+                    <exists>${basedir}/atlas-client-console/pom.xml</exists>
+                </file>
+            </activation>
+            <modules>
+                <module>atlas-client-console</module>
+            </modules>
+        </profile>
+    </profiles>
 
     <build>
         <pluginManagement>

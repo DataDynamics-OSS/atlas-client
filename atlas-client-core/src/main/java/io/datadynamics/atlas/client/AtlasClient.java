@@ -10,6 +10,7 @@ import io.datadynamics.atlas.client.auth.BasicAuth;
 import io.datadynamics.atlas.client.auth.BearerTokenAuth;
 import io.datadynamics.atlas.client.auth.KerberosAuth;
 import io.datadynamics.atlas.client.http.AtlasTransport;
+import io.datadynamics.atlas.client.http.RequestListener;
 import io.datadynamics.atlas.client.http.RetryPolicy;
 
 import javax.net.ssl.SSLContext;
@@ -101,6 +102,7 @@ public final class AtlasClient {
         private SSLContext sslContext;
         private String userAgent = "atlas-client-java";
         private boolean cookiesEnabled = true;
+        private RequestListener requestListener = RequestListener.none();
 
         private Builder() {
         }
@@ -175,9 +177,15 @@ public final class AtlasClient {
             return this;
         }
 
+        /** Observes every HTTP attempt, see {@link RequestListener}. */
+        public Builder requestListener(RequestListener requestListener) {
+            this.requestListener = Objects.requireNonNull(requestListener, "requestListener");
+            return this;
+        }
+
         public AtlasClientConfig buildConfig() {
             return new AtlasClientConfig(AtlasClientConfig.normalizeServerUrls(serverUrls), authProvider,
-                    connectTimeout, requestTimeout, retryPolicy, sslContext, userAgent, cookiesEnabled);
+                    connectTimeout, requestTimeout, retryPolicy, sslContext, userAgent, cookiesEnabled, requestListener);
         }
 
         public AtlasClient build() {

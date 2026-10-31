@@ -1,6 +1,7 @@
 package io.datadynamics.atlas.client;
 
 import io.datadynamics.atlas.client.auth.AuthProvider;
+import io.datadynamics.atlas.client.http.RequestListener;
 import io.datadynamics.atlas.client.http.RetryPolicy;
 
 import javax.net.ssl.SSLContext;
@@ -23,10 +24,11 @@ public final class AtlasClientConfig {
     private final SSLContext sslContext;
     private final String userAgent;
     private final boolean cookiesEnabled;
+    private final RequestListener requestListener;
 
     AtlasClientConfig(List<URI> serverUrls, AuthProvider authProvider, Duration connectTimeout,
                       Duration requestTimeout, RetryPolicy retryPolicy, SSLContext sslContext,
-                      String userAgent, boolean cookiesEnabled) {
+                      String userAgent, boolean cookiesEnabled, RequestListener requestListener) {
         if (serverUrls.isEmpty()) {
             throw new IllegalArgumentException("At least one Atlas server URL is required");
         }
@@ -38,6 +40,7 @@ public final class AtlasClientConfig {
         this.sslContext = sslContext;
         this.userAgent = Objects.requireNonNull(userAgent, "userAgent");
         this.cookiesEnabled = cookiesEnabled;
+        this.requestListener = Objects.requireNonNull(requestListener, "requestListener");
     }
 
     /**
@@ -102,5 +105,9 @@ public final class AtlasClientConfig {
 
     public boolean isCookiesEnabled() {
         return cookiesEnabled;
+    }
+
+    public RequestListener getRequestListener() {
+        return requestListener;
     }
 }

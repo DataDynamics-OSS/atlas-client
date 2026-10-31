@@ -42,8 +42,14 @@ import java.util.stream.Collectors;
  * <p>
  * <b>YAML/JSON</b>: a list of entities ({@code typeName}, {@code attributes}, ...), or an object with
  * an {@code entities} list as returned by the REST API.
+ * <p>
+ * Public so that applications can import the same files as {@code atlas entities import}:
+ * <pre>{@code
+ * List<AtlasEntity> entities = EntityFiles.parse("tables.csv", text, "hive_table");
+ * client.entities().createOrUpdate(EntityFiles.linkWithinBatch(entities));
+ * }</pre>
  */
-final class EntityFiles {
+public final class EntityFiles {
 
     private static final ObjectMapper YAML = AtlasJson.configure(new YAMLMapper());
     static final String SEPARATOR = "|";
@@ -51,21 +57,32 @@ final class EntityFiles {
     private EntityFiles() {
     }
 
-    static List<AtlasEntity> read(Path file, String defaultType) {
-        String name = file.getFileName().toString().toLowerCase(Locale.ROOT);
+    /** Reads a {@code .csv}, {@code .json}, {@code .yaml} or {@code .yml} file. */
+    public static List<AtlasEntity> read(Path file, String defaultType) {
         String text;
         try {
             text = Files.readString(file, StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new UncheckedIOException("Cannot read " + file, e);
         }
+        return parse(file.getFileName().toString(), text, defaultType);
+    }
+
+    /**
+     * Parses file contents; the format is chosen by the extension of {@code fileName}.
+     *
+     * @param defaultType type of entities that do not name one, may be {@code null}
+     * @throws IllegalArgumentException if the format is unsupported or an entity is invalid
+     */
+    public static List<AtlasEntity> parse(String fileName, String text, String defaultType) {
+        String name = fileName.toLowerCase(Locale.ROOT);
         if (name.endsWith(".csv")) {
             return fromCsv(text, defaultType);
         }
         if (name.endsWith(".json") || name.endsWith(".yaml") || name.endsWith(".yml")) {
             return fromStructured(name.endsWith(".json") ? AtlasJson.mapper() : YAML, text, defaultType);
         }
-        throw new IllegalArgumentException("Unsupported file type (use .csv, .json, .yaml or .yml): " + file);
+        throw new IllegalArgumentException("Unsupported file type (use .csv, .json, .yaml or .yml): " + fileName);
     }
 
     private record Column(String header, String attribute, boolean array, String referenceType) {
@@ -179,7 +196,7 @@ final class EntityFiles {
      * Atlas only resolves unique-attribute references to entities that already exist, and rejects
      * the request otherwise (ATLAS-404-00-00A), so a table and its columns could not be imported together.
      */
-    static List<AtlasEntity> linkWithinBatch(List<AtlasEntity> batch) {
+    public static List<AtlasEntity> linkWithinBatch(List<AtlasEntity> batch) {
         Map<String, AtlasEntity> byKey = new HashMap<>();
         for (AtlasEntity entity : batch) {
             if (entity.getGuid() == null) {
