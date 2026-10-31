@@ -194,7 +194,7 @@ AtlasEntityChangeListener listener = AtlasEntityChangeListener.builder()
 ## CLI (atlas-client-cli)
 
 ```bash
-alias atlas='java -jar atlas-client-cli-0.1.0-all.jar'
+alias atlas='java -jar atlas-client-cli-0.2.0-all.jar'
 export ATLAS_URL=http://atlas:21000 ATLAS_USER=admin ATLAS_PASSWORD=admin
 
 atlas status                                         # Atlas 2.3.0 (ACTIVE)
