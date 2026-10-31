@@ -133,16 +133,16 @@
     </dependencies>
 
     <profiles>
-        <!-- Optional web console module; built only where its directory exists. -->
+        <!-- Optional web demo module; built only where its directory exists. -->
         <profile>
-            <id>console</id>
+            <id>demo</id>
             <activation>
                 <file>
-                    <exists>${basedir}/atlas-client-console/pom.xml</exists>
+                    <exists>${basedir}/atlas-client-demo/pom.xml</exists>
                 </file>
             </activation>
             <modules>
-                <module>atlas-client-console</module>
+                <module>atlas-client-demo</module>
             </modules>
         </profile>
     </profiles>
